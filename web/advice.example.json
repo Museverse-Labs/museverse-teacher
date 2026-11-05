@@ -1,0 +1,11 @@
+{
+ "version": 1,
+ "note": "An example of the advice file's shape; the real advice is private.",
+ "items": [
+  {
+   "id": "example-slow-practice",
+   "kind": "slip",
+   "say": "Play the bar slowly, hands separately, then together."
+  }
+ ]
+}

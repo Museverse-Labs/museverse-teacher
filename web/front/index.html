@@ -1,0 +1,1968 @@
+<title>Museverse: AI Piano Teacher</title>
+<meta name="description" content="Film yourself playing piano: Museverse, the AI piano teacher, shows you what to fix.">
+<link rel="stylesheet" href="../font.css">
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="muse.css">
+<style>
+
+:root {
+  --tb-max: 880px;
+  --tb-run: #C084FC;          
+  --tb-ok: #34D399;           
+  --tb-bad: #F87171;          
+  --tb-wait: #9CA3AF;         
+  --tb-amber: #FCD34D;        
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--ground); }
+
+.tb { position: relative; min-height: 100svh; display: grid; grid-template-rows: auto auto 1fr; isolation: isolate;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-bottom: 32px; }
+
+.tb-wave { position: fixed; left: 0; right: 0; bottom: 0; height: 58vh; z-index: -1; pointer-events: none; transition: opacity 500ms ease;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 28%, #000 80%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 28%, #000 80%, transparent 100%); }
+.tb-wave canvas { width: 100%; height: 100%; display: block; }
+@media (max-width: 719px) { .tb-wave { height: 46vh; } }
+
+.tb[data-on="form"] .tb-wave, .tb[data-on="tests"] .tb-wave { opacity: 0.45; }
+@media (prefers-reduced-motion: reduce) { .tb-wave { transition: none; } }
+.tb-top { display: flex; align-items: center; gap: 12px 16px; min-height: 64px; max-width: 1100px; width: 100%; margin: 0 auto; }
+.tb-brand { display: inline-flex; align-items: baseline; gap: 8px; flex: none; color: inherit; text-decoration: none; border-radius: 8px; }
+.tb-brand:hover .brandname { color: #FFFFFF; }
+.tb-brand:focus-visible { outline: 2px solid var(--grad-a); outline-offset: 4px; }
+.tb-strip { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto; justify-content: flex-end; font-size: 13px; color: var(--muted); }
+.tb-worker { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46ch; }
+@media (max-width: 559px) { .tb-worker { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
+.tb-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--tb-wait); flex: none; }
+.tb-pulse.on { background: var(--tb-ok); box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.15); }
+.tb-pulse.busy { background: var(--tb-run); box-shadow: 0 0 0 4px rgba(192, 132, 252, 0.18); }
+.tb-nav { flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line-2);
+  background: rgba(30, 28, 26, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: var(--fg); font: 600 14px/1 var(--font); cursor: pointer; }
+.tb-nav[aria-current="page"] { border-color: var(--tint-line); }
+
+.tb-new { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 16px 0 12px; border: 0; border-radius: 999px;
+  background: #FFFFFF; color: var(--ground); font: 600 14px/1 var(--font); cursor: pointer; }
+.tb-new svg { width: 16px; height: 16px; flex: none; }
+.tb-new:hover { background: #F3F4F6; }
+.tb-new:focus-visible { outline: 2px solid var(--grad-a); outline-offset: 2px; }
+@media (max-width: 419px) {
+  .tb-new { width: 40px; padding: 0; justify-content: center; }
+  .tb-new-t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}
+
+@media (max-width: 479px) {
+  .tb-top { gap: 10px; }
+  .tb-brand { flex-direction: column; align-items: flex-start; gap: 4px; flex: 0 1 auto; min-width: 0; }
+  .tb-brand .brandname { font-size: 15px; white-space: nowrap; }
+}
+.tb-nav-n:not(:empty) { min-width: 20px; padding: 2px 6px; border-radius: 999px; background: var(--tint); color: var(--fg); font-size: 12px; text-align: center; font-variant-numeric: tabular-nums; }
+.tb-stage { width: 100%; max-width: 560px; margin: 0 auto; display: grid; align-content: center; gap: 16px; padding-block: 24px 12vh; }
+.tb-stage:has(.tb-tests:not([hidden])) { max-width: var(--tb-max); align-content: start; padding-block: 16px 40px; }
+.tb-view { display: grid; gap: 24px; min-width: 0; }
+.tb-view[hidden], .tb-pane[hidden] { display: none; }
+.tb-hello { justify-items: center; text-align: center; gap: 20px; }
+.tb-hello h1 { font-size: clamp(44px, 9vw, 80px); line-height: 1.02; letter-spacing: -0.03em; }
+.tb-lead { color: var(--body); font-size: clamp(17px, 2.2vw, 20px); margin: 0; }
+.tb-hello .btn { margin-top: 8px; min-width: 160px; }
+@media (prefers-reduced-motion: no-preference) {
+  .tb-view:not([hidden]), .tb-pane:not([hidden]) { animation: tb-in 360ms cubic-bezier(.2, .7, .2, 1) both; }
+  @keyframes tb-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+}
+
+.tb-dots { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; justify-content: center; }
+.tb-dots li { width: 8px; height: 8px; border-radius: 999px; background: var(--line-2); transition: width 240ms, background 240ms; }
+.tb-dots li.done { background: var(--purple); }
+.tb-dots li.now { width: 28px; background: linear-gradient(90deg, var(--grad-a), var(--grad-b)); }
+@media (prefers-reduced-motion: reduce) { .tb-dots li { transition: none; } }
+#tb-form { display: grid; gap: 28px; min-width: 0; }
+.tb-pane { display: grid; gap: 18px; min-width: 0; }
+.tb-pane h2 { font-size: clamp(30px, 6vw, 46px); line-height: 1.08; letter-spacing: -0.02em; text-align: center; margin: 0; }
+.tb-field { display: grid; gap: 8px; min-width: 0; }
+.tb-label { color: var(--fg); font-weight: 600; font-size: 15px; padding: 0; }
+.tb-hint { font-size: 14px; line-height: 1.5; color: var(--muted); margin: 0; }
+.tb-pane > .tb-hint { text-align: center; }
+.tb-seg { display: inline-flex; justify-self: center; padding: 4px; gap: 4px; border-radius: 999px; background: rgba(30, 28, 26, 0.7); border: 1px solid var(--line-2); }
+.tb-seg label { display: inline-flex; align-items: center; min-height: 36px; padding: 0 16px; border-radius: 999px; font-weight: 600; font-size: 14px; color: var(--body); cursor: pointer; }
+.tb-seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.tb-seg label:has(input:checked) { background: #FFFFFF; color: var(--ground); }
+.tb-seg label:has(input:focus-visible) { outline: 2px solid var(--grad-a); outline-offset: 2px; }
+.tb-seg label:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+.tb-drop { display: grid; gap: 12px; justify-items: center; text-align: center; padding: 36px 20px; border-radius: var(--r); border: 1px dashed var(--line-2);
+  background: rgba(30, 28, 26, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.tb-drop.over { border-color: var(--grad-a); background: var(--tint); }
+.tb-drop-ic { width: 32px; height: 32px; color: var(--grad-a); }
+
+.tb-example { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--r); border: 1px solid var(--line-2);
+  background: rgba(30, 28, 26, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.tb-example[hidden], .tb-ex-poster[hidden] { display: none; }
+.tb-ex-poster { overflow: hidden; }
+.tb-ex-frame { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.tb-example.on { border-color: var(--grad-a); background: var(--tint); }
+.tb-ex-poster { flex: 0 0 auto; width: 72px; height: 48px; border-radius: 8px; background: var(--ground) center / cover no-repeat; }
+.tb-ex-text { display: grid; gap: 2px; min-width: 0; flex: 1 1 auto; text-align: left; }
+.tb-ex-h { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.tb-ex-rec { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 14px; color: var(--fg); }
+
+.tb-ex-logo { display: inline-block; flex: 0 0 auto; width: 96px; height: 21px; background: url("rayban-meta-logo.png") left center / contain no-repeat; }
+.tb-ex-meta { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+
+@media (max-width: 479px) { .tb-example { flex-wrap: wrap; } .tb-ex-text { flex: 1 1 0; } #tb-ex-use { flex: 1 0 100%; } }
+.tb-file { font-size: 14px; color: var(--muted); overflow-wrap: anywhere; margin: 0; }
+.tb-file.has { color: var(--fg); font-size: 15px; }
+#tb-form input[type="url"], #tb-form input[type="text"], #tb-form select { width: 100%; }
+#tb-form input[type="url"] { font: 400 16px/1.3 var(--font); color: var(--fg); background: rgba(30, 28, 26, 0.7); border: 1px solid var(--line-2); border-radius: 999px; padding: 12px 18px; min-height: 48px; }
+#tb-form input[type="url"]::placeholder { color: var(--muted); }
+
+.tb-cards { display: grid; gap: 10px; }
+.tb-lengths { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tb-card { position: relative; display: grid; gap: 4px; align-content: start; padding: 16px 18px; border-radius: var(--r-sm); border: 1px solid var(--line-2); text-align: left;
+  background: rgba(30, 28, 26, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: var(--body); font: inherit; cursor: pointer; min-width: 0; }
+.tb-card input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.tb-card b { color: var(--fg); font-weight: 700; font-size: 17px; }
+.tb-card span { font-size: 13px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
+.tb-card:hover { border-color: rgba(168, 85, 247, 0.35); }
+.tb-card:has(input:checked), .tb-card[aria-pressed="true"] { border-color: var(--purple); background: linear-gradient(rgba(168, 85, 247, 0.16), rgba(236, 72, 153, 0.08)), rgba(30, 28, 26, 0.7); }
+.tb-card:has(input:focus-visible), .tb-card:focus-visible { outline: 2px solid var(--grad-a); outline-offset: 2px; }
+.tb-card:has(input:disabled), .tb-card:disabled { opacity: 0.45; cursor: not-allowed; }
+.tb-card::after { content: ""; position: absolute; top: 16px; right: 16px; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--line-2); }
+.tb-card:has(input:checked)::after, .tb-card[aria-pressed="true"]::after { border-color: var(--purple); background: radial-gradient(circle, #FFFFFF 0 4px, var(--purple) 4.5px); }
+.tb-card b, .tb-card span:first-of-type { padding-right: 26px; }
+.tb-len { text-align: center; justify-items: center; padding: 20px 14px; }
+.tb-len b { font-size: clamp(28px, 6vw, 36px); letter-spacing: -0.02em; padding-right: 0; }
+.tb-len::after { display: none; }
+.tb-len span:first-of-type { padding-right: 0; color: var(--body); font-size: 14px; }
+.tb-len .tb-est { font-variant-numeric: tabular-nums; }
+.tb-sub { margin-left: 24px; }
+.tb-card.tb-sub:has(input:disabled) { display: none; }          
+.tb-inline { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; }
+.tb-more { justify-self: center; width: 100%; }
+.tb-est { text-align: center; margin: 0; }
+
+.tb-more > summary, .tb-consent > summary { display: flex; justify-content: center; align-items: center; min-height: 40px; color: var(--muted); font-size: 14px; font-weight: 600; }
+.tb-more > summary:hover, .tb-consent > summary:hover { color: var(--fg); }
+.tb-more-in { display: grid; gap: 14px; padding-top: 8px; }
+.tb-pick { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 14px; min-width: 0; }
+.tb-pick-start { justify-content: flex-start; }
+.tb-sum { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.tb-sum li { padding: 6px 12px; border-radius: 999px; background: rgba(30, 28, 26, 0.7); border: 1px solid var(--line-2); font-size: 13px; color: var(--body); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-agree { justify-self: center; }
+.tb-agree span { min-width: 0; overflow-wrap: anywhere; }
+.tb-agree-text { display: grid; gap: 6px; }
+.tb-agree-text b { color: var(--fg); font-weight: 600; }
+.tb-agree-list { display: grid; gap: 4px; }
+.tb-agree-list > span { position: relative; padding-left: 16px; color: var(--body); }
+.tb-agree-list > span::before { content: ""; position: absolute; left: 2px; top: 0.62em; width: 5px; height: 5px; border-radius: 50%; background: var(--purple); }
+.tb-consent { justify-self: center; width: 100%; font-size: 13px; line-height: 1.55; color: var(--muted); }
+.tb-consent ul { margin: 10px 0 0; padding: 14px 16px 14px 32px; display: grid; gap: 6px; border-radius: var(--r-sm); background: rgba(30, 28, 26, 0.85); border: 1px solid var(--line); }
+
+.tb-terms { display: grid; gap: 10px; justify-items: center; font-size: 14px; color: var(--muted); }
+.tb-terms-row { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; cursor: pointer; }
+.tb-terms-row input { width: 18px; height: 18px; margin: 0; accent-color: var(--purple); flex: none; cursor: pointer; }
+.tb-terms-link { font-size: 14px; }
+.tb-terms-full { display: grid; gap: 10px; width: 100%; text-align: left; padding: 14px 16px; border-radius: var(--r-sm); background: rgba(30, 28, 26, 0.85); border: 1px solid var(--line); }
+.tb-terms-full[hidden] { display: none; }
+.tb-terms-full .tb-est { text-align: left; }
+.tb-terms-full .tb-consent > summary { justify-content: flex-start; }
+#tb-dots[hidden] { display: none; }
+.tb-navrow { display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; }
+.tb-navrow .btn-lg { min-width: 160px; }
+.tb-prev { background: transparent; }
+.tb-msg { font-size: 14px; line-height: 1.5; text-align: center; margin: 0; min-height: 0; }
+
+.tb-pieces { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.tb-pc { position: relative; display: grid; gap: 10px; align-content: start; padding: 10px 10px 14px; border-radius: var(--r-sm); border: 1px solid var(--line-2);
+  background: rgba(30, 28, 26, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: var(--body); cursor: pointer; min-width: 0; text-align: left; }
+.tb-pc input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.tb-pc:hover { border-color: rgba(168, 85, 247, 0.35); }
+.tb-pc:has(input:checked) { border-color: var(--purple); background: linear-gradient(rgba(168, 85, 247, 0.16), rgba(236, 72, 153, 0.08)), rgba(30, 28, 26, 0.7); }
+.tb-pc:has(input:focus-visible) { outline: 2px solid var(--grad-a); outline-offset: 2px; }
+.tb-pc-art { display: block; width: 100%; max-width: 100%; aspect-ratio: 4 / 5; object-fit: cover; object-position: 50% 20%; border-radius: 10px; background: var(--ground); }
+.tb-pc-art-none { display: grid; place-items: center; color: #E9D5FF; background: linear-gradient(135deg, rgba(168, 85, 247, 0.32), rgba(236, 72, 153, 0.18)), rgba(30, 28, 26, 0.7); }
+.tb-pc-art-none svg { width: 36px; height: 36px; }
+.tb-pc-t { display: grid; gap: 2px; min-width: 0; padding: 0 4px; }
+.tb-pc-t b { color: var(--fg); font-weight: 700; font-size: 18px; line-height: 1.25; }
+.tb-pc-t span { color: var(--muted); font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+.tb-pc::after { content: ""; position: absolute; top: 18px; right: 18px; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.7); background: rgba(20, 19, 18, 0.55); }
+.tb-pc:has(input:checked)::after { border-color: var(--purple); background: radial-gradient(circle, #FFFFFF 0 4px, var(--purple) 4.5px); }
+.tb-hello .tb-pieces { width: 100%; margin-top: 4px; }
+.tb-hello .tb-msg { margin: -6px 0 0; }
+
+.tb[data-on="hello"] { padding-bottom: 0; }
+.tb[data-on="hello"] .tb-stage { padding-block: clamp(4px, 1.5vh, 24px) clamp(16px, 3vh, 48px); }
+.tb-hello { gap: clamp(10px, 2vh, 20px); }
+.tb-hello h1 { font-size: clamp(34px, min(9vw, 8vh), 80px); }
+.tb-hello .btn { margin-top: clamp(0px, 0.8vh, 8px); }
+.tb-hello .tb-pieces { width: min(100%, calc(2 * (max(140px, 100svh - 292px - 20vh) * 0.8 + 22px) + 12px)); }
+.tb-msg:empty { display: none; }
+.tb-msg.err { color: #FCA5A5; }
+.tb-msg.ok { color: var(--tb-ok); }
+.tb-msg.note { color: var(--tb-amber); }
+.tb-tip { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 2px; text-align: left; }
+
+
+
+.tb-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+
+.tb-run { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.tb-run-top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
+.tb-run-top:empty { display: none; }
+.tb-run-top .tb-job-head { display: flex; align-items: center; gap: 10px; }
+.tb-run-top .tb-job-name { flex: 1 1 auto; min-width: 0; color: var(--muted); font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-now { position: relative; width: 100%; flex: none; height: clamp(180px, 34vh, 520px); overflow: hidden; background: transparent;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent), linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent);
+  -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent), linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent);
+  mask-composite: intersect; }
+.tb-now[hidden] { display: none; }
+
+.tb-now:not(.ready)::after { content: "Getting the piano ready..."; position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; }
+.tb-now[data-why]::after { content: "The piano animation could not start: " attr(data-why) ". Your analysis carries on."; position: absolute; inset: 0; display: grid; place-items: center; padding: 0 16px; text-align: center; color: var(--muted); font-size: 14px; }
+@media (prefers-reduced-motion: no-preference) { .tb-now:not(.ready)::after { animation: tb-pulse-txt 1.6s ease-in-out infinite; } @keyframes tb-pulse-txt { 50% { opacity: 0.45; } } }
+
+.tb[data-on="tests"]:has(#tb-run:not([hidden])) .tb-wave { opacity: 0; }
+
+.tb-up { display: grid; gap: 8px; }
+.tb-up-name { margin: 0; color: var(--muted); font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+.tb-up-line, .tb-up-msg { margin: 0; color: var(--fg); font-size: 15px; }
+.tb-up.failed .tb-up-msg { color: #FCA5A5; }
+.tb-up-bar { height: 4px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.tb-up-bar > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #C084FC, #F472B6); }
+@media (prefers-reduced-motion: no-preference) { .tb-up-bar > i { transition: width 200ms linear; } .tb-up-bar.busy > i { animation: tb-pulse-txt 1.4s ease-in-out infinite; } }
+.tb-up-acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.tb-anim { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; pointer-events: none; }
+.tb-feature { display: grid; gap: 12px; padding: 4px 0 0; }
+.tb-feature .tb-job-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tb-feature .tb-job-name { color: var(--muted); font-weight: 600; font-size: 14px; }
+.tb-now-step { margin: 0; color: var(--fg); font-weight: 600; font-size: 15px; line-height: 1.35; min-width: 0; }
+.tb-now-meta { margin: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 6px 14px; flex-wrap: wrap; color: var(--muted); font-size: 14px; }
+.tb-feature .bar { height: 4px; }
+
+.tb-del { flex: none; display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 10px; background: none;
+  color: var(--muted); cursor: pointer; }
+.tb-del svg { width: 18px; height: 18px; }
+.tb-del:hover { color: #FCA5A5; background: rgba(248, 113, 113, 0.08); }
+.tb-del:focus-visible { outline: 2px solid var(--grad-a); outline-offset: 2px; }
+.tb-acts-end { justify-content: flex-end; }
+
+.tb-phases { display: grid; }
+.tb-ph { list-style: none; margin: 0; padding: 0; display: grid; }
+.tb-ph-i { position: relative; display: grid; grid-template-columns: 30px minmax(0, 1fr); column-gap: 14px; align-items: start; padding-bottom: 10px; }
+.tb-ph-i:last-child { padding-bottom: 0; }
+.tb-ph-i:not(:last-child)::before { content: ""; position: absolute; left: 14.5px; top: 34px; bottom: 2px; width: 1px; background: var(--line-2); }
+.tb-ph-ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; border: 1px solid var(--line-2);
+  background: rgba(30, 28, 26, 0.7); color: var(--muted); }
+.tb-ph-ic svg { width: 16px; height: 16px; }
+.tb-ph-tx { min-width: 0; display: grid; grid-template-columns: 172px minmax(0, 1fr); column-gap: 14px; align-items: baseline; padding-top: 5px; }
+.tb-ph-h { margin: 0; display: flex; align-items: center; gap: 7px; min-height: 20px; color: var(--muted); font-size: 14px; font-weight: 500; white-space: nowrap; }
+.tb-ph-ok { width: 15px; height: 15px; flex: none; color: var(--tb-ok); }
+.tb-ph-pct { color: var(--tb-run); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tb-ph-d { margin: 0; color: var(--body); font-size: 15px; line-height: 1.4; }
+.tb-ph-sub { grid-column: 2; margin: 2px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.tb-ph-i.done .tb-ph-ic { color: var(--tb-run); }
+.tb-ph-i.running .tb-ph-ic { color: var(--fg); border-color: rgba(192, 132, 252, 0.6); box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.12), 0 0 18px rgba(192, 132, 252, 0.28); }
+.tb-ph-i.running .tb-ph-h { color: var(--tb-run); font-weight: 600; }
+.tb-ph-i.running .tb-ph-d { color: var(--fg); }
+.tb-ph-i.waiting .tb-ph-d, .tb-ph-i.skipped .tb-ph-d { color: var(--muted); }
+.tb-ph-i.skipped .tb-ph-ic { border-style: dashed; }
+.tb-ph-i.failed .tb-ph-ic { color: var(--tb-bad); border-color: rgba(248, 113, 113, 0.5); }
+.tb-ph-i.failed .tb-ph-h, .tb-ph-i.failed .tb-ph-sub { color: #FCA5A5; }
+@media (max-width: 719px) {
+  .tb-ph-tx { grid-template-columns: minmax(0, 1fr); }
+  .tb-ph-sub { grid-column: 1; }
+  .tb-ph-i:not(.running):not(.failed) .tb-ph-d { display: none; }
+  .tb-ph-d { margin-top: 2px; font-size: 14px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tb-ph-i.running .tb-ph-ic { animation: tb-ph-glow 2.4s ease-in-out infinite; }
+  @keyframes tb-ph-glow { 50% { box-shadow: 0 0 0 5px rgba(168, 85, 247, 0.08), 0 0 26px rgba(236, 72, 153, 0.32); } }
+}
+.tb-feature .tb-pill, .tb-lib .tb-pill, .tb-run-top .tb-pill { border: 0; padding: 0; }
+.tb-det > summary { color: var(--muted); font-size: 14px; }
+.tb-det .tb-facts { margin: 0 0 6px; }
+
+.tb-run[hidden] { display: none; }
+.tb-run-head { display: flex; align-items: center; gap: 14px; }
+.tb-run-back { min-height: 36px; padding: 0 14px 0 10px; font-size: 13px; }
+.tb-run-h { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.tb-lib-row.live .tb-lib-fix { color: var(--tb-run); }
+.tb-libbox { display: grid; gap: 8px; margin-top: 4px; }
+.tb-run:not([hidden]) ~ .tb-libbox { margin-top: 36px; }
+.tb-libbox[hidden] { display: none; }
+.tb-lib-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
+.tb-lib-head h2 { margin: 0; font-size: clamp(30px, 5.5vw, 44px); line-height: 1.08; letter-spacing: -0.02em; font-weight: 700; color: var(--fg); }
+.tb-lib-n { color: var(--muted); font-size: 15px; }
+.tb-lib-head .linkbtn { margin-left: auto; font-size: 14px; }
+.tb-lib-lead { margin: 0 0 8px; color: var(--muted); font-size: 15px; line-height: 1.5; }
+.tb-lib { list-style: none; margin: 0; padding: 0; display: grid; }
+.tb-lib-item { border-top: 1px solid var(--line); }
+.tb-lib-item:last-child { border-bottom: 1px solid var(--line); }
+.tb-lib-line { display: flex; align-items: center; gap: 4px; }
+.tb-lib-row { flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 80px;
+  padding: 12px 6px; background: none; border: 0; border-radius: 12px; color: var(--body); font: 500 15px/1.3 var(--font); text-align: left; cursor: pointer; }
+.tb-lib-row:hover { background: rgba(255, 255, 255, 0.03); }
+.tb-lib-row:hover .tb-lib-name { color: #FFFFFF; }
+.tb-lib-row:focus-visible, .tb-lib-more:focus-visible { outline: 2px solid var(--grad-a); outline-offset: 2px; }
+.tb-lib-art { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; display: block; background: var(--ground); }
+.tb-lib-art-none { display: grid; place-items: center; color: #E9D5FF; border: 1px solid var(--line-2);
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.32), rgba(236, 72, 153, 0.18)), rgba(30, 28, 26, 0.7); }
+.tb-lib-art-none svg { width: 24px; height: 24px; }
+.tb-lib-text { display: grid; gap: 3px; min-width: 0; }
+.tb-lib-name { color: var(--fg); font-weight: 700; font-size: 17px; line-height: 1.25; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-lib-sub { color: var(--muted); font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tb-lib-fix { color: var(--body); font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-lib-more { flex: none; width: 40px; height: 40px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 10px; background: none;
+  color: var(--muted); cursor: pointer; }
+.tb-lib-more:hover { color: var(--fg); background: rgba(255, 255, 255, 0.04); }
+.tb-lib-more svg { width: 20px; height: 20px; }
+.tb-lib-more[aria-expanded="true"] svg { transform: rotate(180deg); }
+@media (prefers-reduced-motion: no-preference) { .tb-lib-more svg { transition: transform 200ms ease; } }
+.tb-lib-body { display: grid; gap: 12px; padding: 0 6px 18px 76px; }
+@media (max-width: 479px) {
+  .tb-lib-row { grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; min-height: 72px; padding: 10px 2px; }
+  .tb-lib-art { width: 48px; height: 48px; }
+  .tb-lib-name { font-size: 16px; }
+  .tb-lib-fix { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .tb-lib-body { padding-left: 2px; }
+}
+.tb-empty { padding: 28px; border-radius: var(--r); border: 1px dashed var(--line-2); color: var(--muted); font-size: 15px; line-height: 1.55; text-align: center; background: rgba(30, 28, 26, 0.7); }
+.tb-job { display: grid; gap: 14px; }
+.tb-job-head { display: grid; gap: 6px; grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+.tb-job-name { color: var(--fg); font-weight: 700; font-size: 17px; line-height: 1.35; overflow-wrap: anywhere; }
+.tb-facts { font-size: 14px; color: var(--muted); line-height: 1.5; }
+.tb-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font: 600 12px/1.5 var(--font); border: 1px solid currentColor; white-space: nowrap; }
+.tb-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.tb-pill.queued, .tb-pill.deleting { color: var(--tb-wait); }
+.tb-pill.fetching, .tb-pill.running { color: var(--tb-run); }
+.tb-pill.done { color: var(--tb-ok); }
+.tb-pill.failed { color: var(--tb-bad); }
+.tb-overall { display: grid; gap: 6px; }
+.tb-overall .row { font-size: 14px; }
+.tb-num { font-variant-numeric: tabular-nums; }
+.tb-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.tb-step { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 6px 0; font-size: 14px; line-height: 1.45; }
+.tb-step + .tb-step { border-top: 1px solid var(--line); }
+.tb-step .ic { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--tb-wait); justify-self: center; }
+.tb-step.running .ic { border-color: var(--tb-run); border-top-color: transparent; animation: tb-spin 1s linear infinite; }
+.tb-step.done .ic { border-color: var(--tb-ok); background: var(--tb-ok); }
+.tb-step.failed .ic { border-color: var(--tb-bad); background: var(--tb-bad); }
+.tb-step.skipped { color: var(--muted); }
+.tb-step.skipped .ic { border-style: dashed; }
+.tb-step.waiting { color: var(--muted); }
+.tb-step.running .lab { color: var(--fg); font-weight: 600; }
+.tb-step .t { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tb-step .sub { grid-column: 2 / 4; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.tb-step .bar { grid-column: 2 / 4; height: 6px; }
+@keyframes tb-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .tb-step.running .ic { animation: none; border-top-color: var(--tb-run); } }
+.tb-nudge { font-size: 14px; line-height: 1.5; color: var(--tb-amber); display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.tb-err { font-size: 14px; line-height: 1.5; color: #FCA5A5; overflow-wrap: anywhere; }
+.tb-done { display: grid; gap: 10px; }
+.tb-kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: 14px; line-height: 1.5; }
+.tb-kv dt { color: var(--muted); }
+.tb-kv dd { margin: 0; color: var(--body); overflow-wrap: anywhere; }
+.tb-acts { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.tb-acts .linkbtn[data-act="del"] { color: var(--muted); }
+.tb-acts .linkbtn[data-act="del"]:hover { color: #FCA5A5; }
+.tb-qa { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.tb-qa li { display: grid; gap: 4px; font-size: 14px; line-height: 1.5; }
+.tb-qa .q { color: var(--fg); font-weight: 600; }
+.tb-qa .by { color: var(--muted); font-size: 13px; }
+.tb-qa .wait { color: var(--tb-amber); }
+
+.tb-block { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); min-width: 0; }
+.tb-block h3 { font-size: 16px; font-weight: 700; color: var(--fg); margin: 0; }
+.tb-verdicts { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; line-height: 1.5; }
+.tb-verdicts li { display: grid; gap: 2px; min-width: 0; }
+.tb-verdicts .sub { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.tb-v { font-weight: 600; }
+.tb-v.supported { color: var(--tb-ok); }
+.tb-v.partly { color: var(--tb-amber); }
+.tb-v.unsupported { color: var(--tb-bad); }
+.tb-v.not-checkable { color: var(--tb-wait); }
+.tb-refused { font-size: 14px; line-height: 1.5; color: var(--tb-amber); overflow-wrap: anywhere; }
+.tb-sform { display: grid; gap: 14px; min-width: 0; }
+.tb-sform .tb-field { display: grid; gap: 6px; min-width: 0; }
+.tb-sform input[type="text"], .tb-sform select { width: 100%; }
+.tb-sform fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 8px; }
+.tb-sform legend { color: var(--fg); font-weight: 600; font-size: 15px; padding: 0; margin-bottom: 4px; }
+.tb-confirm { display: grid; gap: 10px; padding: 14px 16px; border-radius: var(--r-sm); border: 1px solid rgba(248, 113, 113, 0.35); background: rgba(248, 113, 113, 0.07); font-size: 14px; line-height: 1.5; }
+.btn-danger { border-color: rgba(248, 113, 113, 0.5); color: #FECACA; }
+.btn-danger:hover { border-color: var(--tb-bad); background: rgba(248, 113, 113, 0.12); color: #FFFFFF; }
+.tb-foot { display: grid; gap: 6px; font-size: 13px; line-height: 1.55; color: var(--muted); border-top: 1px solid var(--line); padding-top: 18px; }
+.tb-foot p { margin: 0; }
+.tb-foot { border-top: 0; }
+.tb-help > summary { color: var(--muted); font-size: 13px; justify-content: flex-start; }
+
+
+#tb-teacher .top, #tb-teacher .foot, #tb-teacher .skip { display: none !important; }
+#tb-teacher .mvc-talk { display: none !important; }      
+#tb-teacher .wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+@media (min-width: 720px) { #tb-teacher .wrap { padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); } }
+.tb-bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: rgba(26, 25, 24, 0.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+.tb-bar-in { max-width: 1200px; margin: 0 auto; padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.tb-bar-name { font-weight: 600; color: var(--fg); font-size: 15px; min-width: 0; overflow-wrap: anywhere; flex: 1 1 200px; }
+.tb-bar-note { max-width: 1200px; margin: 0 auto; padding-block: 10px 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); font-size: 13px; line-height: 1.5; color: var(--muted); }
+@media (min-width: 720px) { .tb-bar-note { padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); } }
+.tb-bar-wait { flex: 1 1 100%; font-size: 14px; line-height: 1.5; color: var(--tb-amber); }
+
+
+.mv { position: fixed; inset: 0; z-index: 30; overflow: hidden; color: var(--fg); --dock-h: 136px; --top-h: 60px; --roll-h: 36px;
+  --deck-h: calc(var(--top-h) + env(safe-area-inset-top, 0px));
+  background: radial-gradient(1100px 680px at 50% 36%, rgba(91, 53, 135, 0.30), transparent 64%),
+    radial-gradient(900px 540px at 50% 112%, rgba(236, 72, 153, 0.14), transparent 62%), #0B0A0A; }
+.mv[hidden] { display: none; }
+.mv-canvas { position: absolute; left: 0; right: 0; top: var(--deck-h); bottom: var(--dock-h); }
+.mv-scene { position: absolute; inset: 0; }
+.mv-scene[hidden] { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .mv-scene-in { animation: mv-scene-in 520ms cubic-bezier(.2, .7, .2, 1) both; }
+  @keyframes mv-scene-in { from { opacity: 0; transform: scale(1.015); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+}
+.mv-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; background: transparent; }
+.mv-ov { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+.mv-frame::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
+.mv-frame.sec-good::after { box-shadow: inset 0 0 140px rgba(52, 211, 153, 0.30); }
+.mv-frame.sec-fix::after { box-shadow: inset 0 0 170px rgba(248, 113, 113, 0.40); }
+@media (prefers-reduced-motion: no-preference) { .mv-frame::after { transition: box-shadow 400ms ease; } }
+.mv-sec { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(var(--deck-h) + 6px); max-width: min(420px, calc(100% - 32px));
+  padding: 6px 12px 6px 10px; border-radius: 999px; font: 700 13px/1.2 var(--font); background: rgba(20, 19, 18, 0.74);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 2; }
+.mv-sec[hidden] { display: none; }
+.mv-sec::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; background: currentColor; }
+.mv-sec.good { color: #6EE7B7; border-color: rgba(52, 211, 153, 0.5); }
+.mv-sec.fix { color: #FCA5A5; border-color: rgba(248, 113, 113, 0.55); }
+.mv.lesson .mv-sec, .mv:has(.mv-poster:not([hidden])) .mv-sec { display: none; }
+.mv-spot { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); padding: 10px 18px; border-radius: 999px; font-weight: 700; font-size: 18px; z-index: 2;
+  color: #FFFFFF; background: linear-gradient(135deg, rgba(168, 85, 247, 0.92), rgba(236, 72, 153, 0.9)); box-shadow: 0 0 36px rgba(236, 72, 153, 0.6); pointer-events: none; }
+.mv-spot[hidden] { display: none; }
+
+.mv-ghost { display: grid; place-content: center; padding: 52px 16px 100px; }
+.mv-ghostbox { width: min(1180px, calc(100vw - 32px)); min-width: 0; }
+.mv-ghostbox .mvh-bar, .mv-ghostbox .mvh-tl, .mv-ghostbox .mvh-more, .mv-ghostbox .mvh-side, .mv-ghostbox .mvh-cams, .mv-ghostbox .mvh-hands { display: none !important; }
+
+.mv-ghostbox .mvh-glbox { background: none; border-radius: 0; overflow: visible; }
+.mv-ghostbox .mvh-glbox canvas.mvh-gl { -webkit-mask-image: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent), linear-gradient(to bottom, transparent, #000 6%, #000 94%, transparent);
+  -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent), linear-gradient(to bottom, transparent, #000 6%, #000 94%, transparent); mask-composite: intersect; }
+
+.mv-gesture { position: absolute; top: 62px; right: max(16px, env(safe-area-inset-right, 0px)); z-index: 3; display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600; color: var(--muted); }
+.mv-gesture[hidden], .mv-gesture-hint[hidden], .mv-gesture-reset[hidden] { display: none; }
+.mv-gesture-reset { min-height: 32px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-2); background: rgba(20, 19, 18, 0.7); color: var(--fg);
+  font: 600 12px/1 var(--font); cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.mv-gesture-reset:hover { border-color: rgba(192, 132, 252, 0.55); }
+.mv-gesture-reset:focus-visible { outline: 2px solid var(--grad-a); outline-offset: 2px; }
+.mv-gtop { position: absolute; left: 0; right: 0; top: calc(var(--deck-h) + 8px); display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 2px 12px;
+  padding: 0 16px; text-align: center; z-index: 2; }
+
+.mv-gcap, .mv-gnote, .mv-name { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+.mv-listen { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 16px; padding: 20px; text-align: center; z-index: 3;
+  background: radial-gradient(closest-side, rgba(13, 12, 11, 0.86), rgba(13, 12, 11, 0.55)); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.mv-listen[hidden] { display: none; }
+.mv-lis-orb { width: 96px; height: 96px; border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #FFFFFF 0 6%, #F472B6 22%, #A855F7 55%, #3B1D5C 100%); box-shadow: 0 0 60px rgba(192, 132, 252, 0.6); }
+@media (prefers-reduced-motion: no-preference) { .mv-lis-orb { transition: transform 90ms linear; } }
+.mv-lis-text { margin: 0; font-size: clamp(20px, 2.6vw, 28px); font-weight: 700; color: var(--fg); }
+.mv-lis-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; max-width: 360px; }
+.mv-lis-dots i { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--line-2); display: block; }
+.mv-lis-dots i.on { background: #F472B6; border-color: #F472B6; box-shadow: 0 0 10px rgba(244, 114, 182, 0.7); }
+
+.mv-shade { position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background: linear-gradient(to bottom, rgba(11, 10, 10, 0.86), rgba(11, 10, 10, 0) 16%, rgba(11, 10, 10, 0) 58%, rgba(11, 10, 10, 0.82) 100%); }
+
+
+.mv-top { position: absolute; left: 0; right: 0; top: 0; z-index: 6; display: flex; align-items: center; gap: 16px; min-height: var(--top-h);
+  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
+.mv-back svg { margin-right: 2px; }
+
+.mv-lbar { position: absolute; left: 50%; top: calc(var(--deck-h) + 12px); transform: translateX(-50%); z-index: 5; display: grid; justify-items: center; gap: 6px;
+  width: max-content; max-width: calc(100% - 32px); }
+.mv.choosing .mv-lbar { display: none; }
+.mv-lbar[hidden] { display: none; }
+
+.mv-lparts { list-style: none; position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+.mv-lparts li { padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted); background: rgba(20, 19, 18, 0.6);
+  border: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.mv-lparts li.on { color: var(--fg); border-color: rgba(168, 85, 247, 0.6); background: rgba(88, 42, 140, 0.45); }
+.mv-lsteps { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+.mv-lsteps span { position: relative; padding-left: 13px; }
+.mv-lsteps span::before { content: ""; position: absolute; left: 0; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; border: 1.5px solid var(--line-2); }
+.mv-lsteps span.past { color: var(--body); }
+.mv-lsteps span.past::before { background: #C084FC; border-color: #C084FC; }
+.mv-lsteps span.on { color: var(--fg); font-weight: 600; }
+.mv-lsteps span.on::before { background: #F472B6; border-color: #F472B6; box-shadow: 0 0 10px rgba(244, 114, 182, 0.8); }
+
+
+.mv-strip { display: flex; align-items: center; gap: 10px; max-width: 100%; box-sizing: border-box; padding: 0 2px; }
+.mv-strip[hidden] { display: none; }
+.mv-strip-where { flex: none; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--body); white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); }
+.mv-strip-n { list-style: none; margin: 0; padding: 9px 2px 5px; display: flex; align-items: center; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.mv-strip-n::-webkit-scrollbar { display: none; }
+.mv-nc { position: relative; flex: none; display: flex; align-items: flex-start; gap: 8px; min-width: 30px; justify-content: center; padding: 5px 6px 7px;
+  border-radius: 10px; background: rgba(20, 19, 18, 0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.mv-nc::after { content: ""; position: absolute; left: 9px; right: 9px; bottom: 2px; height: 2px; border-radius: 2px; opacity: 0.6; }
+.mv-nc[data-h="R"]::after { background: #EC4899; }
+.mv-nc[data-h="L"]::after { background: #A855F7; }
+.mv-nc-want, .mv-nc-played { position: relative; display: grid; justify-items: center; gap: 3px; }
+.mv-nc b { font: 700 15px/1 var(--font); color: var(--fg); white-space: nowrap; }
+.mv-nc i { font: 600 11px/1 var(--font); font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mv-nc.lit { background: rgba(192, 132, 252, 0.16); }
+.mv-nc.now { background: rgba(192, 132, 252, 0.34); box-shadow: 0 0 16px rgba(192, 132, 252, 0.5); }
+.mv-nc.lit i { color: var(--body); }
+
+.mv-nc.focus { gap: 12px; padding: 5px 11px 7px; background: rgba(48, 44, 41, 0.7); }
+.mv-nc-played b { color: #F472B6; text-decoration: line-through; text-decoration-thickness: 2px; }
+.mv-nc.focus .mv-nc-want b { color: #E9D5FF; }
+.mv-nc-played::before, .mv-nc.focus .mv-nc-want::before { position: absolute; top: -10px; right: -9px; width: 13px; height: 13px; border-radius: 50%;
+  display: grid; place-items: center; font: 800 9px/1 var(--font); color: #FFFFFF; }
+.mv-nc-played::before { content: "\2715"; background: #EC4899; right: auto; left: -10px; }
+.mv-nc.focus .mv-nc-want::before { content: "\2713"; background: #A855F7; }
+.mv-nc-cap { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); font: 700 9px/1 var(--font); letter-spacing: 0.04em; text-transform: uppercase;
+  white-space: nowrap; color: #F9A8D4; }
+.mv-nc.corrected .mv-nc-cap { color: var(--muted); }
+
+.mv-nc-stop { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: rgba(236, 72, 153, 0.18);
+  color: #FBCFE8; font: 700 12px/1 var(--font); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mv-nc-stop i { width: 8px; height: 10px; box-sizing: border-box; border-left: 3px solid currentColor; border-right: 3px solid currentColor; }
+@media (prefers-reduced-motion: no-preference) { .mv-nc { transition: background-color 160ms ease, box-shadow 160ms ease; } }
+.mv:has(.mv-strip:not([hidden])) .mv-ghost { padding-top: 92px; }
+
+.mv-tag { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); top: calc(var(--deck-h) + 10px); z-index: 5; display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 12px 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--body);
+  background: rgba(20, 19, 18, 0.6); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.mv-tag i { width: 8px; height: 8px; border-radius: 50%; background: #F472B6; box-shadow: 0 0 10px rgba(244, 114, 182, 0.8); }
+.mv-tag[data-s="ghost"] i { background: #C084FC; box-shadow: 0 0 10px rgba(192, 132, 252, 0.9); }
+.mv-tag[data-s="try"] i { background: #34D399; box-shadow: 0 0 10px rgba(52, 211, 153, 0.8); }
+@media (max-width: 899px) { .mv.lesson .mv-tag { display: none; } }
+
+.mv .mv-tag { display: none; }
+
+
+.mv-poster { position: absolute; left: 0; right: 0; top: 0; bottom: var(--dock-h); z-index: 4; display: grid; place-content: center; justify-items: center; gap: 14px;
+  padding: calc(var(--deck-h) + 16px) 20px 24px; text-align: center; background: radial-gradient(closest-side, rgba(11, 10, 10, 0.78), rgba(11, 10, 10, 0.42)); }
+.mv-poster[hidden] { display: none; }
+.mv-eyebrow { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #E9D5FF; }
+.mv-ptitle { margin: 0; max-width: 760px; font-size: clamp(24px, 3.6vw, 40px); line-height: 1.15; letter-spacing: -0.02em; }
+.mv-pmeta { margin: 0; color: var(--muted); font-size: 14px; }
+.mv-play-big { display: inline-flex; align-items: center; gap: 14px; min-height: 64px; padding: 0 28px 0 20px; border: 0; border-radius: 999px; cursor: pointer;
+  color: #FFFFFF; font: 700 18px/1 var(--font); background: linear-gradient(135deg, #A855F7, #EC4899); box-shadow: 0 18px 60px -14px rgba(236, 72, 153, 0.7); }
+.mv-play-big svg { width: 26px; height: 26px; }
+.mv-play-big:hover { filter: brightness(1.08); }
+.mv-play-big:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 3px; }
+@media (prefers-reduced-motion: no-preference) {
+  .mv-play-big { animation: mv-glow 3.2s ease-in-out infinite; }
+  @keyframes mv-glow { 50% { box-shadow: 0 18px 70px -10px rgba(168, 85, 247, 0.85); } }
+}
+.mv-prow { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+
+.mv-skills { margin: 0; width: min(340px, 82vw); }
+.mv-sk-svg { display: block; width: 100%; height: auto; overflow: visible; font-family: var(--font); }
+.mv-skills .sk-ring { fill: none; stroke: rgba(255, 255, 255, 0.16); stroke-width: 1; }
+.mv-skills .sk-half { stroke: rgba(255, 255, 255, 0.08); }
+.mv-skills .sk-axis { stroke: rgba(255, 255, 255, 0.08); stroke-width: 1; }
+.mv-skills .sk-fill { fill: rgba(192, 132, 252, 0.22); stroke: url(#mvSkGrad); stroke-width: 2; stroke-linejoin: round; }
+.mv-skills .sk-dot { fill: #FFFFFF; }
+.mv-skills .sk-name { fill: #D1D5DB; font-size: 11px; font-weight: 600; }
+.mv-skills .sk-name.off { fill: #6B7280; }
+.mv-skills .sk-val { fill: #9CA3AF; font-size: 10.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.mv-skills .sk-score { fill: #FFFFFF; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.mv-skills .sk-score-l { fill: #9CA3AF; font-size: 8px; font-weight: 700; letter-spacing: 0.16em; }
+@media (prefers-reduced-motion: no-preference) {
+  .mv-skills .sk-shape { transform-box: view-box; transform-origin: 120px 104px; animation: mv-sk-in 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  @keyframes mv-sk-in { from { transform: scale(0.2); opacity: 0; } }
+}
+
+
+.mv-sub { position: absolute; left: 50%; bottom: calc(var(--dock-h) + 16px); transform: translateX(-50%); z-index: 6; width: min(860px, calc(100% - 32px));
+  display: grid; justify-items: center; gap: 6px; text-align: center; pointer-events: none; }
+.mv-sub[hidden] { display: none; }
+.mv.choosing .mv-sub { bottom: calc(var(--dock-h) + 72px); }
+
+.mv-sub-who { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+.mv-sub-text { margin: 0; padding: 0; max-width: 100%; color: #FFFFFF; background: none; border: 0;
+  font: 600 clamp(18px, 2vw, 24px)/1.4 var(--font); letter-spacing: -0.005em; overflow-wrap: anywhere;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 2px 16px rgba(0, 0, 0, 0.85); }
+.mv-sub.you .mv-sub-text { color: #FBCFE8; font-weight: 500; }
+.mv-sub.err .mv-sub-text { color: #FCA5A5; }
+.mv-sub.thinking .mv-sub-text { display: inline-flex; gap: 7px; padding: 6px 0; }
+.mv-sub.thinking .mv-sub-text i { width: 8px; height: 8px; border-radius: 50%; background: #FFFFFF; opacity: 0.5; display: block; }
+@media (prefers-reduced-motion: no-preference) {
+  .mv-sub-in { animation: mv-sub-in 360ms cubic-bezier(.2, .7, .2, 1) both; }
+  @keyframes mv-sub-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  .mv-sub.thinking .mv-sub-text i { animation: mv-dot 1.1s ease-in-out infinite; }
+  .mv-sub.thinking .mv-sub-text i:nth-child(2) { animation-delay: .15s; } .mv-sub.thinking .mv-sub-text i:nth-child(3) { animation-delay: .3s; }
+}
+
+.mv-choice { position: absolute; left: 50%; bottom: calc(var(--dock-h) + 6px); transform: translateX(-50%); z-index: 6; display: flex; justify-content: center;
+  align-items: center; gap: 8px; padding: 5px; border-radius: 999px; background: rgba(20, 19, 18, 0.84); border: 1px solid var(--line-2);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); max-width: calc(100% - 32px); white-space: nowrap; }
+.mv-choice[hidden] { display: none; }
+.mv-choice .btn-primary { font-variant-numeric: tabular-nums; }
+.mv.choosing .mv-tag { display: none; }
+
+
+.mv-dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; display: grid; gap: 0; padding: 8px 0 0;
+  background: linear-gradient(to top, rgba(11, 10, 10, 0.97) 70%, rgba(11, 10, 10, 0.6)); }
+.mv-dock > .mv-ask { width: min(560px, calc(100% - 32px)); margin: 0 auto 10px; }
+
+.mv .mv-dock > .mv-ask, .mv .mv-dock > .mv-chips { display: none; }
+
+.mv-deck { position: relative; flex: 1 1 0; min-width: 0; display: flex; align-items: center; }
+.mv-deck > .mv-roll { width: 100%; }
+
+.mv-roll { height: calc(var(--roll-h) - 8px); cursor: pointer; display: block; background: transparent; border: 0;
+  -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 0.55) 0, #000 1.5%, #000 97%, transparent 100%);
+  mask-image: linear-gradient(to right, rgba(0, 0, 0, 0.55) 0, #000 1.5%, #000 97%, transparent 100%); }
+.mv-roll.hands { height: calc(var(--roll-h) + 8px); }
+
+.mv-roll { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.mv-roll:focus { outline: none; }
+.mv-roll:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.7); outline-offset: 2px; border-radius: 8px; }
+
+.mv-dtip { position: absolute; top: calc(100% + 2px); left: 0; z-index: 7; display: inline-flex; align-items: baseline; gap: 8px; white-space: nowrap;
+  padding: 5px 11px; border-radius: 999px; font-size: 12px; line-height: 1.2; color: var(--body); pointer-events: none;
+  background: rgba(20, 19, 18, 0.86); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.mv-dtip[hidden] { display: none; }
+.mv-dtip b { color: #FFFFFF; font-variant-numeric: tabular-nums; }
+.mv-dtip-a { font-weight: 700; color: #FFFFFF; }
+.mv-dtip-a.fix { color: #F9A8D4; }
+
+.mv { --top-h: 84px; }
+.mv-score { position: relative; flex: 1 1 0; min-width: 0; height: 68px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035); -webkit-tap-highlight-color: transparent; }
+.mv-score::-webkit-scrollbar { display: none; }
+.mv-score[hidden] { display: none; }
+.mv-score:focus { outline: none; }
+.mv-score:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.7); outline-offset: 2px; }
+
+.mv-score.tiles { background: none; height: 112px; border-radius: 10px; }
+.mv.sc-tiles { --top-h: 128px; }
+.mv-score.tiles .mv-sc-in { min-width: 0; margin: 0 auto; }
+.mv-score.tiles .mv-sc-art { inset: 0; }
+.mv-sc-paper { display: block; width: 100%; height: 100%; }
+.mv-sc-in { position: relative; height: 100%; min-width: 100%; cursor: pointer; }
+.mv-sc-art { position: absolute; inset: 2px 0; }
+.mv-sc-staff { display: block; }
+.mv-sc-staff .sc-line { stroke: rgba(243, 244, 246, 0.32); stroke-width: 0.8; }
+.mv-sc-staff .sc-barline { stroke: rgba(243, 244, 246, 0.42); stroke-width: 1; }
+.mv-sc-staff .sc-ledger { stroke: rgba(243, 244, 246, 0.5); stroke-width: 0.8; }
+.mv-sc-staff .sc-num { fill: #9CA3AF; font: 600 8px var(--font); }
+.mv-sc-staff .sc-note { fill: #F3F4F6; }
+.mv-sc-staff .sc-acc { fill: #E5E7EB; font: 600 8px var(--font); }
+.mv-fix { position: absolute; top: 0; bottom: 0; padding: 0; margin: 0; border: 1.5px solid rgba(244, 114, 182, 0.75); border-radius: 8px;
+  background: rgba(244, 114, 182, 0.14); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mv-fix:hover, .mv-fix:focus-visible { background: rgba(244, 114, 182, 0.24); outline: none; }
+.mv-fix.on { background: rgba(244, 114, 182, 0.28); border-color: #F472B6; box-shadow: 0 0 14px rgba(244, 114, 182, 0.45); }
+.mv-fix-n { position: absolute; left: 3px; top: 3px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px;
+  background: #F472B6; color: #1B0B14; font: 800 11px/16px var(--font); text-align: center; }
+.mv-sc-head { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #FFFFFF; box-shadow: 0 0 8px rgba(255, 255, 255, 0.8); pointer-events: none; }
+.mv-sc-head[hidden] { display: none; }
+
+.mv-score.tiles .mv-sc-head { top: 3px; bottom: 3px; background: #00F8FF; transition: none;
+  box-shadow: 0 0 0 0.5px rgba(0, 96, 110, 0.55), 0 0 10px rgba(0, 248, 255, 0.75); }
+.mv-score.tiles .mv-fix, .mv-score.tiles .mv-fix:hover, .mv-score.tiles .mv-fix:focus-visible, .mv-score.tiles .mv-fix.on { border: 0; border-radius: 6px; background: none; box-shadow: none; }
+.mv-score.tiles .mv-fix::before { content: ""; position: absolute; inset: 2px 1px; border-radius: 6px; pointer-events: none; mix-blend-mode: multiply;
+  background: rgba(168, 85, 247, 0.13); box-shadow: inset 0 -3px 0 rgba(236, 72, 153, 0.55); }
+.mv-score.tiles .mv-fix:hover::before, .mv-score.tiles .mv-fix:focus-visible::before { background: rgba(168, 85, 247, 0.22); }
+.mv-score.tiles .mv-fix.on::before { background: rgba(236, 72, 153, 0.17); box-shadow: inset 0 -3px 0 #EC4899; }
+.mv-score.tiles .mv-fix:focus-visible { outline: 2px solid #A855F7; outline-offset: -2px; }
+.mv-score.tiles .mv-fix-n { left: 4px; top: 4px; min-width: 15px; height: 15px; font-size: 10px; line-height: 15px; background: #A855F7; color: #FFFFFF; }
+.mv-score.tiles .mv-fix.on .mv-fix-n { background: #EC4899; }
+
+.mv:has(.mv-score.card) { --top-h: 112px; }
+.mv-score.card { background: #EEECE8; overflow: hidden; height: 96px; }
+.mv-score .mvsc { position: absolute; inset: 0; }
+.mv-score .mvsc-paper { position: absolute; inset: 0; border-radius: 10px; background: #EEECE8; overflow: hidden; cursor: pointer; }
+.mv-score .mvsc-ink { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.mv-score .mvsc-tile, .mv-score .mvsc-tile-hl { position: absolute; top: 0; display: block; max-width: none; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.mv-score .mvsc-ov { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; font-family: var(--font); }
+.mv-score .mvsc-hit { position: absolute; inset: 0; pointer-events: none; }
+.mv-score .mvsc-region { position: absolute; pointer-events: auto; padding: 0; margin: 0; cursor: pointer; border-radius: 7px; box-sizing: border-box;
+  background: rgba(192, 132, 252, 0.13); border: 1.5px solid rgba(192, 132, 252, 0.6); -webkit-tap-highlight-color: transparent; }
+.mv-score .mvsc-region:hover, .mv-score .mvsc-region:focus-visible { background: rgba(244, 114, 182, 0.2); outline: none; border-color: #F472B6; }
+.mv-score .mvsc-region.on { background: rgba(244, 114, 182, 0.24); border-color: #EC4899; box-shadow: 0 0 10px rgba(236, 72, 153, 0.35); }
+.mv-score .mvsc-region-n { position: absolute; left: 2px; top: 2px; min-width: 14px; height: 14px; padding: 0 3px; box-sizing: border-box; border-radius: 999px;
+  background: #F472B6; color: #1B0B14; font: 800 10px/14px var(--font); text-align: center; }
+.mv-score .mvsc-pin { display: none; }
+@media (prefers-reduced-motion: no-preference) { .mv-sc-head { transition: left 180ms linear; } }
+.mv-skills .sk-score.off { fill: #6B7280; }
+.mv-plate { display: block; width: 100%; height: 100%; object-fit: contain; }
+
+.mv-ovbox { position: relative; width: 100%; height: min(calc(100vh - 260px), calc(min(1180px, 100vw - 32px) * 0.7)); min-height: 200px; border-radius: 12px; overflow: hidden; background: #151413; }
+.mv-ovstand { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; }
+.mv-bar { width: 100%; min-width: 0; display: grid; align-items: center; gap: 2px 16px; background: #0B0A0A; border-top: 1px solid var(--line);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 560px) minmax(0, 1fr); grid-template-areas: "track ctrl notes" "track mid notes";
+  padding: 10px max(20px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); }
+.mv-track { grid-area: track; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.mv-art-btn { flex: none; display: block; padding: 0; border: 0; border-radius: 6px; background: none; cursor: pointer; line-height: 0; }
+.mv-art-btn:focus-visible { outline: 2px solid var(--grad-a); outline-offset: 3px; }
+.mv-art { display: block; width: 56px; height: 56px; border-radius: 6px; object-fit: cover; object-position: 50% 18%; pointer-events: none; background: linear-gradient(135deg, #3B2457, #5B2A4A); }
+@media (prefers-reduced-motion: no-preference) { .mv-art { transition: filter 160ms ease; } }
+.mv-art-btn:hover .mv-art { filter: brightness(1.15); }
+.mv-meta { display: grid; gap: 2px; min-width: 0; }
+.mv-title { font-size: 15px; font-weight: 700; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv-artist { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv-ctrl { grid-area: ctrl; display: flex; align-items: center; justify-content: center; gap: 14px; }
+.mv-tools { grid-area: notes; justify-self: end; display: flex; align-items: center; gap: 4px; }
+.mv-tools .mv-tbtn { border-color: transparent; background: transparent; color: var(--body); }
+.mv-tools .mv-tbtn:hover { color: var(--fg); }
+
+.mv-vol { -webkit-appearance: none; appearance: none; width: 96px; height: 4px; margin: 0 10px 0 0; padding: 0; border-radius: 999px; cursor: pointer; border: 0;
+  background: linear-gradient(to right, #FFFFFF var(--v, 100%), rgba(255, 255, 255, 0.22) var(--v, 100%)); }
+.mv-vol::-webkit-slider-runnable-track { height: 4px; background: transparent; }
+.mv-vol::-moz-range-track { height: 4px; background: transparent; }
+.mv-vol::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; margin-top: -4px; border-radius: 50%; background: #FFFFFF; border: 0; opacity: 0; }
+.mv-vol::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: #FFFFFF; border: 0; opacity: 0; }
+.mv-vol:hover::-webkit-slider-thumb, .mv-vol:focus-visible::-webkit-slider-thumb { opacity: 1; }
+.mv-vol:hover::-moz-range-thumb, .mv-vol:focus-visible::-moz-range-thumb { opacity: 1; }
+.mv-vol:focus-visible { outline: 2px solid var(--grad-a); outline-offset: 6px; }
+.mv-tbtn { flex: none; display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: 999px; border: 1px solid var(--line-2); cursor: pointer;
+  background: rgba(30, 28, 26, 0.7); color: var(--fg); }
+.mv-tbtn svg { width: 18px; height: 18px; }
+.mv-tbtn[hidden] { display: none; }
+.mv-tbtn:hover { border-color: rgba(192, 132, 252, 0.55); }
+.mv-tbtn:focus-visible { outline: 2px solid var(--grad-a); outline-offset: 2px; }
+
+.mv-ctrl .mv-tbtn { width: 36px; height: 36px; border: 0; background: transparent; color: var(--body); }
+.mv-ctrl .mv-tbtn:hover { color: var(--fg); }
+.mv-ctrl .mv-tbtn[hidden] { display: inline-grid; visibility: hidden; }
+.mv-play, .mv-ctrl .mv-play { width: 44px; height: 44px; border: 0; color: #0B0A0A; background: #FFFFFF; }
+.mv-ctrl .mv-play:hover { color: #0B0A0A; transform: scale(1.06); }
+.mv-play svg { width: 20px; height: 20px; }
+.mv-voice-on[aria-pressed="false"] { color: var(--muted); }
+.mv-mid { grid-area: mid; min-width: 0; display: flex; align-items: center; gap: 10px; }
+
+.mv-where { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+.mv-t { flex: none; width: 38px; font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--muted); }
+.mv-t-l { text-align: right; }
+.mv-prog { flex: 1 1 auto; min-width: 0; height: 16px; display: flex; align-items: center; cursor: default; touch-action: none; outline-offset: 4px; border-radius: 4px; }
+.mv-prog.live { cursor: pointer; }
+.mv-prog:focus-visible { outline: 2px solid var(--grad-a); }
+.mv-segs { display: flex; gap: 3px; width: 100%; align-items: center; }
+.mv-seg { flex: 1 1 0; min-width: 0; height: 4px; border-radius: 999px; background: rgba(255, 255, 255, 0.16); position: relative; }
+.mv-seg > span { display: block; height: 100%; width: 0; border-radius: inherit; background: #FFFFFF; position: relative; }
+.mv-seg:not(.on):not(.past) > span { background: transparent; }
+.mv-seg.past > span { background: #FFFFFF; }
+.mv-prog.live:hover .mv-seg, .mv-prog:focus-visible .mv-seg { height: 6px; }
+.mv-seg.on > span::after { content: ""; position: absolute; right: -6px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: #FFFFFF; opacity: 0; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5); }
+.mv-prog.live:hover .mv-seg.on > span::after, .mv-prog:focus-visible .mv-seg.on > span::after, .mv-prog.scrubbing .mv-seg.on > span::after { opacity: 1; }
+
+@media (hover: none) { .mv-prog.live .mv-seg.on > span::after { opacity: 1; } .mv-prog.live .mv-seg { height: 5px; } }
+.mv-prog.scrubbing .mv-seg { height: 6px; }
+@media (prefers-reduced-motion: no-preference) { .mv-seg { transition: height 120ms ease; } .mv-seg > span { transition: width 220ms linear; } .mv-prog.scrubbing .mv-seg > span { transition: none; } }
+.mv-vrow { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.mv-vrow:has(.mv-voice[hidden]) { display: none; }
+.mv-voice { flex: 1 1 0; width: 100%; min-width: 0; min-height: 32px; padding: 0 4px; border-radius: 0; font: 500 12px/1 var(--font);
+  color: var(--body); background: transparent; border: 0; text-overflow: ellipsis; }
+.mv-voice[hidden] { display: none; }
+.mv-chips { position: absolute; left: 0; right: 0; bottom: calc(100% + 4px); display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 0 16px; }
+.mv-chips[hidden] { display: none; }
+.mv-chip { border: 1px solid var(--line-2); background: rgba(20, 19, 18, 0.78); color: var(--body); border-radius: 999px; padding: 8px 12px; font: 600 13px/1.2 var(--font);
+  cursor: pointer; text-align: left; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.mv-chip:hover { border-color: rgba(168, 85, 247, 0.5); color: var(--fg); }
+
+.mv-ask { display: flex; gap: 4px; align-items: center; min-height: 38px; padding: 3px; border-radius: 999px; border: 1px solid var(--line-2);
+  background: rgba(30, 28, 26, 0.82); }
+.mv-ask:focus-within { border-color: var(--grad-a); }
+.mv-ask .mv-voice-on { width: 32px; height: 32px; border-color: transparent; background: transparent; color: var(--muted); }
+.mv-ask .mv-voice-on svg { width: 16px; height: 16px; }
+.mv-ask .mv-voice-on:hover { color: var(--body); }
+
+.mv-credit { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+.mv-ask input[type="text"] { flex: 1 1 auto; min-width: 0; width: 100%; min-height: 0; height: 30px; padding: 0 8px; border: 0; border-radius: 0; outline: 0; background: transparent; color: var(--fg); font: 400 14px/1.3 var(--font); }
+.mv-send { width: 32px; height: 32px; flex: none; border-radius: 50%; border: 0; cursor: pointer; color: var(--body); display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.08); }
+.mv-send svg { width: 16px; height: 16px; }
+.mv-send:hover { background: rgba(255, 255, 255, 0.16); color: var(--fg); }
+.mv-send:focus-visible { outline: 2px solid var(--grad-a); outline-offset: 2px; }
+
+
+.mv .tb-nav, .mv .mv-tbtn, .mv .mv-chip, .mv .mv-ask, .mv .mv-tag, .mv .mv-sec, .mv .mv-choice, .mv .mv-gesture-reset, .mv .btn:not(.btn-primary) { border: 0; }
+.mv .mv-bar, .mv .mv-chatform { border-top: 0; }
+.mv .tb-nav, .mv .mv-chip, .mv .mv-tag, .mv .mv-gesture-reset { background: rgba(255, 255, 255, 0.09); }
+.mv .mv-ask { background: rgba(255, 255, 255, 0.08); }
+.mv .tb-nav:hover, .mv .mv-chip:hover, .mv .mv-gesture-reset:hover, .mv .mv-ask:focus-within { background: rgba(255, 255, 255, 0.15); }
+.mv .mv-tools .mv-tbtn, .mv .mv-ask .mv-voice-on, .mv .mv-head .mv-tbtn { background: transparent; }
+.mv .mv-tbtn:not(.mv-play):hover { background: rgba(255, 255, 255, 0.08); }
+.mv .mv-ctrl .mv-tbtn:not(.mv-play):hover { background: transparent; }
+
+
+.mv-notes { position: absolute; inset: 0; z-index: 8; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: #0B0A0A;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+.mv-notes[hidden] { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .mv-notes:not([hidden]) { animation: mv-chat-in 260ms cubic-bezier(.2, .7, .2, 1) both; }
+  @keyframes mv-chat-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  @keyframes mv-dot { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+  .mv-typing i { animation: mv-dot 1.1s ease-in-out infinite; }
+  .mv-typing i:nth-child(2) { animation-delay: .15s; } .mv-typing i:nth-child(3) { animation-delay: .3s; }
+}
+.mv-head { display: flex; align-items: center; gap: 12px; width: min(720px, 100%); margin: 0 auto; padding: 16px 16px 8px; box-sizing: border-box; }
+.mv-head .mv-tbtn { border-color: transparent; background: transparent; color: var(--body); }
+.mv-head .mv-tbtn:hover { color: var(--fg); }
+.mv-who { display: grid; flex: 1 1 auto; min-width: 0; gap: 2px; }
+.mv-who b { color: var(--fg); font-size: 18px; letter-spacing: -0.01em; }
+.mv-src { font-size: 12px; color: var(--muted); }
+.mv-head .mv-vrow { flex: 0 1 220px; }
+.mv-talk { list-style: none; width: min(720px, 100%); margin: 0 auto; padding: 12px 16px 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; min-height: 0; }
+.mv-msg { display: grid; gap: 4px; max-width: 100%; }
+.mv-text { margin: 0; font-size: 16px; line-height: 1.6; color: var(--fg); overflow-wrap: anywhere; }
+.mv-msg.mv-you { align-self: flex-end; max-width: 82%; text-align: right; }
+.mv-msg.mv-you .mv-text { color: #FBCFE8; }
+.mv-msg.mv-err .mv-text { color: #FCA5A5; }
+.mv-msg.mv-aside .mv-text { color: var(--muted); }
+.mv-msg:not(.mv-now):not(.mv-you) .mv-text { color: var(--body); }
+.mv-msg.mv-now .mv-text { color: #FFFFFF; }
+.mv-by { font-size: 11px; color: var(--muted); }
+.mv-typing .mv-text { display: inline-flex; gap: 5px; align-items: center; width: max-content; }
+.mv-typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: 0.5; display: block; }
+.mv-chat-foot { width: min(720px, 100%); margin: 0 auto; padding: 4px 16px 16px; box-sizing: border-box; display: grid; gap: 8px; }
+.mv-chat-chips { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.mv-chat-chips[hidden] { display: none; }
+.mv-chat-chip { background: none; border: 0; padding: 4px 0; color: var(--muted); font: 500 14px/1.3 var(--font); cursor: pointer; text-align: left; }
+.mv-chat-chip:hover { color: var(--fg); }
+.mv-chatform { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+.mv-chatform input[type="text"] { flex: 1 1 auto; min-width: 0; width: 100%; min-height: 0; height: 36px; padding: 0; border: 0; border-radius: 0; outline: 0; background: transparent; color: var(--fg); font: 400 16px/1.3 var(--font); }
+.mv-chatform input[type="text"]::placeholder { color: var(--muted); }
+.mv-chatform:focus-within { border-top-color: var(--line-2); }
+
+
+.tb-glance, .tb-hc { display: grid; gap: 14px; margin: 18px 0 6px; padding: 0; }
+.tg-h { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.tg-hands { display: grid; gap: 6px; }
+.tg-hand { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font-size: 15px; }
+.tg-hand b { color: var(--fg); font-weight: 600; min-width: 92px; }
+.tg-hand span { color: var(--body); min-width: 0; overflow-wrap: anywhere; }
+.tg-hand.good span { color: #6EE7B7; } .tg-hand.fix span { color: #FCA5A5; }
+.tg-key { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--muted); }
+.tg-k::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 0; }
+.tg-k-good::before { background: #34D399; } .tg-k-fix::before { background: #F87171; } .tg-k-unsure::before { border: 1.5px solid rgba(243, 244, 246, 0.4); }
+.tg-note { flex-basis: 100%; font-style: italic; }
+.tg-nums { margin: 0; display: flex; flex-wrap: wrap; gap: 6px 28px; }
+.tg-n { display: grid; gap: 2px; }
+.tg-n b { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; color: var(--fg); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.tg-n small { font-size: 12px; color: var(--muted); }
+.tg-credit { font-size: 12px; color: var(--muted); text-decoration: underline; justify-self: start; }
+
+.hc-say { margin: 0; font-size: 15px; color: var(--body); }
+.hc-bars { display: flex; flex-wrap: wrap; gap: 6px 4px; }
+.hc-b { display: grid; justify-items: center; gap: 4px; min-width: 24px; }
+.hc-b i { width: 14px; height: 14px; border-radius: 50%; display: block; box-sizing: border-box; }
+.hc-b small { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hc-yes i, .hc-k-yes::before { background: #C084FC; }
+.hc-partly i, .hc-k-partly::before { background: linear-gradient(90deg, #C084FC 50%, rgba(243, 244, 246, 0.18) 50%); }
+.hc-no i, .hc-k-no::before { border: 1.5px solid rgba(243, 244, 246, 0.4); }
+.hc-none i { border: 1.5px dashed rgba(243, 244, 246, 0.2); }
+.hc-k::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 0; box-sizing: border-box; }
+.hc-ms { display: grid; gap: 10px; }
+.hc-m { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font-size: 15px; }
+.hc-m b { color: var(--fg); font-weight: 600; }
+.hc-m em { font-style: normal; font-size: 12px; color: var(--muted); }
+.hc-m span { flex-basis: 100%; color: var(--body); overflow-wrap: anywhere; }
+.hc-m small { flex-basis: 100%; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hc-judged em { color: #FCA5A5; } .hc-judged span { color: #FCA5A5; }
+.hc-silent span { color: var(--muted); }
+
+
+@media (max-width: 719px) {
+  .mv { --top-h: 56px; }
+  .mv-top { gap: 10px; }
+  .mv-top .tb-nav { min-height: 36px; padding: 0 12px; font-size: 13px; }
+  
+  .mv-back { padding: 0 10px; }
+  .mv-back svg { margin-right: 0; }
+  .mv-back-word { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+  .mv-where { font-size: 11px; }
+  .mv-bar { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "track ctrl notes" "mid mid mid"; gap: 8px 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px)); }
+  .mv-art { width: 44px; height: 44px; }
+  .mv-title { font-size: 14px; }
+  .mv-artist { font-size: 12px; }
+  .mv-ctrl { gap: 4px; }
+  .mv-vol { display: none; }
+  .mv-head .mv-vrow > span { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }   
+  .mv-head .mv-vrow { flex: 0 1 150px; }
+  .mv { --roll-h: 32px; }
+  .mv-tag { font-size: 11px; }
+  .mv-sec { top: calc(var(--deck-h) + 48px); }
+  .mv-sub-text { font-size: 17px; }
+  .mv-ghost { padding: 64px 12px 112px; }
+  .mv:has(.mv-strip:not([hidden])) .mv-ghost { padding-top: 104px; }
+  .mv:has(.mv-strip:not([hidden])) .mv-gesture { top: 122px; }
+  .mv-strip { padding: 0; gap: 8px; }
+  .mv-strip-where { font-size: 10px; }
+  .mv-nc { min-width: 26px; padding: 4px 4px 6px; gap: 6px; }
+  .mv-nc b { font-size: 13px; }
+  .mv-gesture { top: 74px; right: 14px; }
+}
+
+@media (max-width: 719px) {
+  .mv { --top-h: 132px; }
+  .mv-top { flex-wrap: wrap; align-content: center; row-gap: 8px; }
+  .mv-top .mv-details { margin-left: auto; }
+  .mv-score { order: 3; flex: 1 0 100%; height: 64px; }
+  .mv:has(.mv-score.card) { --top-h: 156px; }
+  .mv-score.card { height: 88px; }
+  .mv.sc-tiles { --top-h: 152px; }
+  .mv-score.tiles { height: 84px; }
+}
+
+
+.mv8 { --top-h: 68px; }
+.mv8 .mv8-stage { position: absolute; left: 0; right: 0; top: var(--deck-h); bottom: calc(var(--dock-h) + var(--band-h, 0px)); z-index: 1; }
+.mv8 .mv-band { position: absolute; left: 0; right: 0; bottom: var(--dock-h); z-index: 6; background: transparent; }
+
+.mv8 .mv-band .mv-sc-paper, .mv8 .mv-band .mv-band-staff, .mv8 .mv-band .mv-cols { display: none !important; }
+.mv8 .mv-band[hidden] { display: none; }
+.mv8 .mv-band-view { position: absolute; overflow: hidden; touch-action: pan-y; cursor: grab; -webkit-user-select: none; user-select: none; }
+.mv8 .mv-band-view:active { cursor: grabbing; }
+.mv8 .mv-band-view .mv-sc-paper { position: absolute; left: 0; top: 0; display: block; }
+.mv8 .mv-band-in { position: absolute; left: 0; top: 0; will-change: transform; }
+.mv8 .mv-band-staff { position: absolute; left: 0; top: 0; pointer-events: none; }
+.mv8 .mv-band .mv-sc-head { position: absolute; width: 2px; margin-left: -1px; background: #FFFFFF; box-shadow: 0 0 6px rgba(255, 255, 255, 0.6); pointer-events: none; z-index: 3; }
+.mv8 .mv-band .mv-sc-head[hidden] { display: none; }
+.mv8 .mv-band .mv-rail { bottom: auto; }
+
+.mv8 .mv-cols, .mv8 .mv-bubs { position: absolute; left: 0; top: 0; width: 100%; height: 0; }
+.mv8 .mv-col { position: absolute; padding: 0; margin: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mv8 .mv-col-glow { position: absolute; top: 0; bottom: 0; border-radius: 6px; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(248, 113, 113, 0.10), rgba(248, 113, 113, 0.23)); }
+.mv8 .mv-col:focus { outline: none; }
+.mv8 .mv-bub { position: absolute; display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px 3px 4px; border-radius: 999px; cursor: pointer;
+  border: 1px solid #FCA5A5; background: #FDE8E8; color: #B42318; font: 700 13px/1 var(--font); white-space: nowrap; min-height: 24px; box-sizing: border-box;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); -webkit-tap-highlight-color: transparent; z-index: 2; }
+.mv8 .mv-bub::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 26px; margin-top: -13px; }
+.mv8 .mv-bub-n { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 999px;
+  background: #F87171; color: #FFFFFF; font: 800 11px/1 var(--font); }
+.mv8 .mv-bub-k { font-size: 13px; line-height: 1; font-family: var(--font), "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.mv8 .mv-bub-tip { position: absolute; width: 8px; height: 8px; transform: rotate(45deg); z-index: 1; pointer-events: none;
+  background: #FDE8E8; border-right: 1px solid #FCA5A5; border-bottom: 1px solid #FCA5A5; }
+.mv8 .mv-bub-tip.on { background: #F87171; border-color: #F87171; }
+.mv8 .mv-bub.on { background: #F87171; border-color: #F87171; color: #FFFFFF; box-shadow: 0 0 10px rgba(248, 113, 113, 0.55); }
+.mv8 .mv-bub.on .mv-bub-n { background: #FFFFFF; color: #DC2626; }
+.mv8 .mv-bub:focus { outline: none; }
+.mv8 .mv-bub:focus-visible { outline: 2px solid #1A1918; outline-offset: 1px; }
+.mv8 .mv-lanes .mv-lane-k { right: auto; transform: translateY(-50%); font: 700 11px/1 var(--font); color: #E2DCEC; }
+@media (max-width: 719px) {
+  .mv8 .mv-bub { padding: 2px 7px 2px 3px; gap: 3px; font-size: 11px; min-height: 20px; }
+  .mv8 .mv-bub-n { min-width: 15px; height: 15px; font-size: 9px; }
+  .mv8 .mv-bub-k { font-size: 11px; }
+}
+
+.mv8 .mv2 { position: absolute; inset: 0 16px 8px; z-index: auto; container-type: size; background: #211F1D; border-radius: 16px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+.mv8 .mv2 { --cap-h: 60px; }
+.mv8 .mv2-stage { position: absolute; left: 50%; top: calc(50% - var(--cap-h) / 2); transform: translate(-50%, -50%); height: auto; aspect-ratio: var(--take-ar, 0.75);
+  width: min(calc(100cqw - 32px), calc((100cqh - 28px - var(--cap-h)) * var(--take-ar, 0.75))); border-radius: 14px; overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 24px 60px rgba(0, 0, 0, 0.55); }
+@media (max-width: 719px) and (orientation: portrait) {
+  .mv8 .mv2-stage { top: 104px; transform: translateX(-50%); width: min(calc(100cqw - 32px), calc((100cqh - 116px - var(--cap-h)) * var(--take-ar, 0.75))); }
+}
+
+.mv8 .mv2-lib, .mv8 .mv2-home, .mv8 .mv2-bar-c, .mv8 .mv2-vol, .mv8 .mv2-more { display: none !important; }
+.mv8 .mv-bar { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: "track ctrl notes"; }
+.mv8 .mv-score { cursor: default; }
+
+.mv8 .mv-art.song { object-position: 50% 50%; }
+.mv8 .mv-sc-in { cursor: default; }
+
+.mv8 .mv-sc-tints { position: absolute; left: 0; right: 0; top: 0; pointer-events: none; }
+.mv8 .mv-tint { position: absolute; top: 3px; bottom: 3px; border-radius: 6px; background: rgba(192, 132, 252, 0.12); }
+.mv8 .mv-rail { position: absolute; left: 0; right: 0; bottom: 0; }
+.mv8 .mv-rail-seg { position: absolute; height: 24px; padding: 0; margin: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mv8 .mv-rail-pill { position: absolute; left: 0; right: 0; top: 50%; display: flex; align-items: center; box-sizing: border-box; padding-left: 7px;
+  background: rgba(168, 85, 247, 0.32); color: #F3F4F6; font: 700 10px/1 var(--font); pointer-events: none; }
+.mv8 .mv-rail-seg:hover .mv-rail-pill { background: rgba(168, 85, 247, 0.5); }
+.mv8 .mv-rail-seg:focus { outline: none; }
+.mv8 .mv-rail-seg:focus-visible .mv-rail-pill { outline: 2px solid #F3F4F6; outline-offset: 1px; }
+.mv8 .mv-rail-seg.on .mv-rail-pill { background: #A855F7; box-shadow: 0 0 6px #C084FC; color: #FFFFFF; }
+@media (prefers-reduced-motion: no-preference) { .mv8 .mv-rail-pill { transition: background-color 160ms ease, box-shadow 160ms ease; } }
+@media (max-width: 719px) { .mv8 .mv-rail-pill { font-size: 9px; padding-left: 5px; } }
+
+.mv8 .mv-score { overflow: visible; }
+.mv8 .mv-lanes { position: absolute; left: 0; right: 0; }
+.mv8 .mv-lanes[hidden] { display: none; }
+.mv8 .mv-lane-k { position: absolute; right: calc(100% + 5px); transform: translateY(-50%); font: 600 9px/1 var(--font); color: #9CA3AF; pointer-events: none; }
+.mv8 .mv-lane-seg { position: absolute; border-radius: 4px; pointer-events: none; }
+.mv8 .mv-lane-seg.fix { border-radius: 2px; }
+
+.mv8 .mv-roll { position: absolute; border-radius: 1px; background: rgba(6, 18, 14, 0.8); pointer-events: none; z-index: 1; }
+.mv8 .mv-roll-bar { position: absolute; width: 1px; background: rgba(0, 0, 0, 0.45); pointer-events: none; z-index: 1; }
+.mv8 .mv-roll-n { position: absolute; font: 600 10px/1 var(--font); color: rgba(255, 255, 255, 0.45); pointer-events: none; }
+.mv8 .mv-lane-seg.good { background: #34D399; }
+.mv8 .mv-lane-seg.fix { background: #F87171; }
+.mv8 .mv-lane-seg.unsure { background: rgba(243, 244, 246, 0.16); }
+.mv8 .mv-lane-hit { position: absolute; height: 24px; padding: 0; margin: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mv8 .mv-lane-hit:hover .mv-lane-seg { box-shadow: 0 0 6px rgba(248, 113, 113, 0.8); }
+.mv8 .mv-lane-hit:focus { outline: none; }
+.mv8 .mv-lane-hit:focus-visible .mv-lane-seg { outline: 2px solid #F3F4F6; outline-offset: 1px; }
+@media (max-width: 719px) {
+  .mv8 { --top-h: 60px; }
+  .mv8 .mv-bar { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "track ctrl notes"; }
+}
+
+.mv8 .mv2-end.bento { position: absolute; inset: 0; top: 0; z-index: 9; display: block; overflow-y: auto; overscroll-behavior: contain; padding: 20px;
+  border-radius: 16px; background: radial-gradient(1200px 700px at 30% 20%, rgba(91, 53, 135, 0.22), transparent 70%), #211F1D; text-align: left; }
+.mv8 .mv2-end.bento[hidden] { display: none; }
+
+.mv8:has(.mv2-end.bento:not([hidden])) .mv-band { display: none; }
+.mv8:has(.mv2-end.bento:not([hidden])) .mv8-stage { bottom: var(--dock-h) !important; }
+
+.mv8 .bn-acts .mv2-again { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 14px 26px; border: 0; border-radius: 999px;
+  background: #FFFFFF; color: #1A1918; font: 600 16px/1.1 var(--font); cursor: pointer; box-shadow: none; }
+.mv8 .bn-acts .mv2-again:hover { background: #E5E7EB; }
+.mv8 .bn-acts .mv2-again:focus-visible { outline: 2px solid var(--grad-a); outline-offset: 2px; }
+.mv8 .bn.bn-hands .bn-hero { min-height: clamp(360px, 52vh, 560px); }
+.mv-skills .sk-dot-low { fill: #1A1918; stroke: #F3F4F6; stroke-width: 1.4; }   
+.mv8 .bn-cheer { margin: 4px 0 0; color: #F3F4F6; font-size: clamp(15px, 1.35vw, 17px); line-height: 1.45; max-width: 46ch; }
+.mv8 .bn-cheer + .bn-lead { font-size: 14px; color: var(--muted); }
+
+.mv8 .bn-keep .bn-ok { width: 30px; height: 30px; margin: 0; border: 0; border-radius: 50%; background: #34D399; color: #1A1918; }
+.mv8 .bn-keep .bn-ok svg { width: 16px; height: 16px; }
+
+.mv8 .bn-cat { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font: 600 12px/1 var(--font); letter-spacing: 0.08em; text-transform: uppercase; }
+.mv8 .bn-cat .bn-emoji { font-size: 16px; letter-spacing: 0; }
+.mv8 .bn-keep .bn-fix-top .bn-eye { color: #A7F3D0; }
+.mv8 .bn-keep { border-color: rgba(255, 255, 255, 0.08); }
+.mv8 .bn-hd.bn-hd-K { background: #34D399; }
+.bn-emoji { font-size: 18px; line-height: 1; font-family: var(--font), "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; color: var(--fg); }
+.bn { width: min(1180px, 100%); margin: 0 auto; display: grid; gap: 12px; grid-template-columns: minmax(0, 2fr) minmax(0, 1.15fr) minmax(0, 1fr); grid-auto-rows: minmax(0, auto); }
+.bn-t { position: relative; min-width: 0; border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(30, 28, 26, 0.72);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 20px 22px; color: var(--body); }
+.bn-eye { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.bn-sub { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.4; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+.bn-hero { grid-row: span 2; overflow: hidden; padding: 0; display: grid; min-height: clamp(320px, 46vh, 460px); isolation: isolate; }
+.bn-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; z-index: -2; }
+.bn-art-none { display: grid; place-items: center; color: #E9D5FF; background: linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(236, 72, 153, 0.22)), #1F1D1C; }
+.bn-art-none svg { width: 72px; height: 72px; opacity: 0.6; }
+.bn-hero::after { content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(180deg, rgba(11, 10, 10, 0.05) 20%, rgba(11, 10, 10, 0.72) 58%, rgba(11, 10, 10, 0.94) 100%); }
+.bn-hero-t { align-self: end; display: grid; gap: 8px; padding: 24px 26px 24px; }
+.bn-hero .bn-eye { color: #E9D5FF; }
+.bn-title { margin: 0; color: #FFFFFF; font-size: clamp(30px, 3.6vw, 48px); line-height: 1.04; letter-spacing: -0.025em; font-weight: 800; }
+.bn-lead { margin: 2px 0 0; color: var(--fg); font-size: clamp(16px, 1.5vw, 19px); }
+.bn-by { margin: 0; color: var(--muted); font-size: 14px; }
+.bn-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
+
+.bn-skills { grid-row: span 2; display: grid; align-content: start; gap: 6px; }
+.bn-skills .mv-skills { width: 100%; max-width: 360px; justify-self: center; margin-top: 4px; }
+
+.bn-hand { display: grid; align-content: start; gap: 10px; }
+.bn-big { margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.bn-big b { font-size: 44px; line-height: 1; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.bn-L .bn-big b, .bn-R .bn-big b { color: var(--fg); }
+.bn-L .bn-eye::before, .bn-R .bn-eye::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
+.bn-L .bn-eye::before { background: #C084FC; }
+.bn-R .bn-eye::before { background: #F472B6; }
+.bn-hs .bn-eye::before { display: none; }
+.bn-unit { color: var(--muted); font-size: 13px; font-weight: 500; }
+.bn-pc { font-size: 0.5em; font-weight: 700; margin-left: 2px; letter-spacing: 0; }
+.bn-lane { position: relative; display: block; height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+.bn-lane-s { position: absolute; top: 0; bottom: 0; border-radius: 99px; }
+
+.bn-lane-s.good { background: #34D399; }
+.bn-lane-s.fix { background: #F87171; }
+.bn-lane-s.unsure { background: rgba(243, 244, 246, 0.16); }
+
+.bn-row { grid-column: 1 / -1; display: grid; gap: 12px; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); }
+.bn-fix, .bn-keep { display: grid; align-content: start; gap: 8px; min-height: 150px; text-align: left; font: inherit; }
+.bn-fix { cursor: pointer; }
+.bn-fix:hover { border-color: rgba(168, 85, 247, 0.3); background: rgba(36, 31, 38, 0.78); }
+.bn-fix:focus-visible { outline: 2px solid var(--grad-a); outline-offset: 2px; }
+.bn-fix-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.bn-n { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #C084FC, #F472B6); color: #1A1918; font-weight: 800; font-size: 15px; }
+.bn-ic { display: inline-grid; place-items: center; width: 30px; height: 30px; color: var(--muted); }
+.bn-ic svg { width: 22px; height: 22px; }
+.bn-ok { width: 40px; height: 40px; border-radius: 12px; color: #C084FC; background: rgba(168, 85, 247, 0.14); border: 1px solid rgba(192, 132, 252, 0.28); margin: 4px 0 6px; }
+.bn-fix-t { margin: 0; color: var(--fg); font-size: 19px; font-weight: 700; line-height: 1.25; }
+.bn-go { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; color: #E9D5FF; font-size: 13px; font-weight: 600; opacity: 0.85; }
+.bn-go svg { width: 15px; height: 15px; }
+.bn-fix:hover .bn-go { opacity: 1; }
+.bn-keep .bn-eye { color: #E9D5FF; }
+.bn-keep { border-color: rgba(168, 85, 247, 0.25); }
+
+.bn.bn-hands { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 1fr); }
+.bn.bn-hands .bn-hero { grid-row: auto; min-height: clamp(420px, 58vh, 560px); }
+.bn-hs { align-content: start; gap: 8px; }
+
+.bn-hs.bn-L { background: radial-gradient(120% 70% at 0% 0%, rgba(168, 85, 247, 0.16), transparent 58%), rgba(30, 28, 26, 0.72); }
+.bn-hs.bn-R { background: radial-gradient(120% 70% at 100% 0%, rgba(236, 72, 153, 0.14), transparent 58%), rgba(30, 28, 26, 0.72); }
+.bn-hhead { display: flex; align-items: center; gap: 14px; }
+.bn-htx { display: grid; gap: 4px; min-width: 0; }
+.bn-hs .bn-big { gap: 2px 6px; }
+.bn-hs .bn-big b { font-size: 52px; }
+.bn-of { color: var(--muted); font-size: 16px; font-weight: 600; }
+.bn-hic { display: inline-grid; place-items: center; flex: none; width: 52px; height: 52px; border-radius: 16px; }
+.bn-hic svg { width: 30px; height: 30px; }
+.bn-hic-l svg { transform: scaleX(-1); }
+.bn-L .bn-hic { color: #C084FC; background: rgba(168, 85, 247, 0.14); border: 1px solid rgba(192, 132, 252, 0.28); }
+.bn-R .bn-hic { color: #F472B6; background: rgba(236, 72, 153, 0.12); border: 1px solid rgba(244, 114, 182, 0.28); }
+
+.bn-hs { display: flex; flex-direction: column; align-items: stretch; }
+.bn-hs .mv-skills { width: 100%; max-width: 380px; align-self: center; margin: auto 0; padding-block: 10px; }
+.bn-hs .mv-skills .sk-name { fill: #9CA3AF; font-weight: 500; font-size: 12.5px; }
+.bn-hs .mv-skills .sk-val { fill: #F3F4F6; font-weight: 700; font-size: 13.5px; }
+.bn-hs .mv-skills .sk-name.off, .bn-hs .mv-skills .sk-name.off .sk-val { fill: #6B7280; font-weight: 500; }
+.bn-L .mv-skills .sk-fill { fill: rgba(168, 85, 247, 0.22); stroke: #C084FC; }
+.bn-R .mv-skills .sk-fill { fill: rgba(236, 72, 153, 0.18); stroke: #F472B6; }
+.bn-L .mv-skills .sk-spoke { stroke: #C084FC; }
+.bn-R .mv-skills .sk-spoke { stroke: #F472B6; }
+
+.bn .mv-skills .sk-fill.sk-fill-whole { stroke: none; }      
+.mv-skills .sk-edge { stroke: #C084FC; stroke-width: 2; stroke-linecap: round; }
+.bn-R .mv-skills .sk-edge { stroke: #F472B6; }
+.mv-skills .sk-edge-off { stroke-dasharray: 3 4; opacity: 0.5; }
+.mv-skills .sk-dot-off { fill: #1A1918; stroke: rgba(243, 244, 246, 0.55); stroke-width: 1.3; }
+.bn-cap { margin: 4px 0 -2px; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+
+.bn-hd { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; background: linear-gradient(90deg, #C084FC, #F472B6); }
+.bn-hd-L { background: #C084FC; }
+.bn-hd-R { background: #F472B6; }
+.bn-fix:hover .bn-go { color: #FFFFFF; }
+
+.bn.bn-solo .bn-hero { grid-column: 1 / -1; }
+@media (prefers-reduced-motion: no-preference) {
+  .bn-t { animation: bn-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
+  @keyframes bn-in { from { opacity: 0; transform: translateY(14px) scale(0.985); } }
+  .bn-fix { transition: border-color 200ms ease, background 200ms ease, transform 200ms ease; }
+  .bn-fix:hover { transform: translateY(-2px); }
+}
+@media (max-width: 899px) {
+  .bn, .bn.bn-hands { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .bn.bn-hands .bn-hero { order: -1; min-height: 480px; }
+  .bn-hero { grid-column: 1 / -1; grid-row: auto; min-height: 520px; }
+  .bn-art { object-position: 50% 8%; }
+  .bn-skills { grid-column: 1 / -1; grid-row: auto; }
+  .bn-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 559px) {
+  .mv8 .mv2-end.bento { padding-left: 12px; padding-right: 12px; }
+  .bn-row { grid-template-columns: minmax(0, 1fr); }
+  .bn-fix, .bn-keep { min-height: 0; }
+  .bn.bn-hands { grid-template-columns: minmax(0, 1fr); }
+  .bn-hand { padding: 16px; }
+  .bn-big b, .bn-hs .bn-big b { font-size: 36px; }
+  .bn-hic svg { width: 28px; height: 28px; }
+  .bn-unit { display: none; }
+}
+
+.mv8 .mv8-key { position: absolute; left: 36px; top: 40px; z-index: 7; display: flex; flex-wrap: wrap; gap: 8px; pointer-events: none; }
+.mv8 .mv8-key[hidden] { display: none; }
+.mv8 .mv8-key-c { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12); color: rgba(243, 244, 246, 0.88); font: 600 14px/1 var(--font); }
+.mv8 .mv8-key-hd { width: 8px; height: 8px; border-radius: 50%; flex: none; margin: 0 2px 0 4px; }
+.mv8 .mv8-key-hd-L { background: #C084FC; } .mv8 .mv8-key-hd-R { background: #F472B6; } .mv8 .mv8-key-hd-B { background: linear-gradient(90deg, #C084FC, #F472B6); }
+.mv8 .mv8-key-e, .mv8 .mv-hover-e { line-height: 1; font-family: var(--font), "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.mv8 .mv8-key-e { font-size: 16px; }
+
+.mv8 .mv-hover { position: absolute; z-index: 20; width: 240px; box-sizing: border-box; padding: 14px 16px; border-radius: 14px; pointer-events: none;
+  background: rgba(30, 28, 26, 0.94); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); color: #F3F4F6; }
+.mv8 .mv-hover[hidden] { display: none; }
+.mv8 .mv-hover-h { display: flex; align-items: center; gap: 8px; font: 600 12px/1 var(--font); letter-spacing: 0.04em; color: rgba(255, 255, 255, 0.7); }
+.mv8 .mv-hover-n { display: inline-grid; place-items: center; min-width: 20px; height: 20px; border-radius: 999px; background: #F87171; color: #FFFFFF; font-size: 11px; }
+.mv8 .mv-hover-e { font-size: 15px; }
+.mv8 .mv-hover-t { font: 700 17px/1.25 var(--font); margin: 9px 0 4px; }
+.mv8 .mv-hover-w { font: 500 13px/1.3 var(--font); color: rgba(255, 255, 255, 0.62); }
+.mv8 .mv-hover-p { font: 600 12px/1 var(--font); color: rgba(255, 255, 255, 0.85); margin-top: 12px; }
+.mv8 .mv-bub:hover { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85), 0 0 12px rgba(248, 113, 113, 0.55); }
+@media (prefers-reduced-motion: no-preference) { .mv8 .mv-bub { transition: transform 120ms ease, box-shadow 120ms ease; } .mv8 .mv-bub:hover { transform: scale(1.08); } }
+
+@media (max-width: 719px) and (orientation: portrait) {
+  .mv8 .mv8-key { left: 28px; }
+  .mv8 .mv8-key-c { font-size: 12px; padding: 6px 11px 6px 8px; }
+}
+
+@media (max-height: 499px) {
+  .mv8 { --top-h: 0px; }
+  .mv8 .mv-top { min-height: 0; height: 0; padding: 0; overflow: visible; z-index: 20; }
+  .mv8 .mv-back { position: absolute; top: 12px; left: 24px; }
+  .mv8 .mv2 { inset: 8px 16px 6px; }
+  .mv8 .mv2 { --cap-h: 36px; }                             
+  .mv8 .mv2.shell .mv2-subline { -webkit-line-clamp: 1; font-size: 14px; }
+  .mv8 .mv2.shell .mv2-tags { display: none !important; }   
+  .mv8 .mv8-key { left: 160px; top: 22px; }
+  .mv8 .mv2-side { top: calc(50% + 28px); }
+  .mv8 .mv8-key-c { font-size: 12px; padding: 6px 11px 6px 8px; }
+  .mv8 .mv-artist { display: none; }
+  .mv8 .mv-art { width: 44px; height: 44px; }
+  .mv8 .mv-dock { padding-top: 2px; }
+}
+#tb-teacher #chat, #tb-teacher #r-ask { display: none !important; }
+</style>
+
+<div id="tb" class="tb">
+  <div class="tb-wave" id="tb-wave" aria-hidden="true"></div>
+
+  <header class="tb-top">
+    <a class="tb-brand" href="./" id="tb-home" aria-label="Museverse AI Piano Teacher: the first page"><span class="eyebrow">Museverse</span><span class="brandname">AI Piano Teacher</span></a>
+    <div class="tb-strip" id="tb-strip">
+      <span class="tb-pulse" id="tb-pulse" aria-hidden="true"></span><span class="tb-worker" id="tb-worker">Connecting to this page's storage...</span>
+    </div>
+    <button type="button" class="tb-nav" id="tb-to-tests" data-go="tests">History<span class="tb-nav-n" id="tb-nav-n"></span></button>
+    <button type="button" class="tb-new" id="tb-new-btn" data-go="hello" aria-label="New test"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="tb-new-t">New</span></button>
+  </header>
+
+  <p id="tb-alert" class="msg err banner" role="alert" hidden></p>
+
+  <main class="tb-stage">
+    <section class="tb-view tb-hello" data-view="hello" aria-labelledby="tb-h1">
+      <h1 id="tb-h1">Museverse: <span class="grad">AI Piano Teacher</span></h1>
+      <p class="tb-lead">Film yourself playing. See what to fix.</p>
+      
+      <div class="tb-pieces" id="tb-pieces" role="radiogroup" aria-label="Your piece"></div>
+      <p class="tb-msg" id="tb-hello-msg" role="status"></p>
+      <button type="button" class="btn btn-primary btn-lg" id="tb-start-btn">Start</button>
+    </section>
+
+    <section id="tb-new" class="tb-view tb-wizard" data-view="form" aria-label="Start a test" hidden>
+      <ol class="tb-dots" id="tb-dots" aria-hidden="true"><li></li><li></li></ol>
+      <p class="sr-only" id="tb-stepno" aria-live="polite"></p>
+      <form id="tb-form" novalidate>
+        <section class="tb-pane" data-step="video" aria-labelledby="tb-q-video">
+          <h2 id="tb-q-video">Your video</h2>
+          <div class="tb-seg" role="radiogroup" aria-label="Where the video is" hidden>
+            <label><input type="radio" name="tb-src" id="tb-src-up" value="asset" checked><span>Upload</span></label>
+            <label><input type="radio" name="tb-src" id="tb-src-drive" value="drive"><span>Drive link</span></label>
+          </div>
+          <div id="tb-up-box" class="tb-drop">
+            <svg class="tb-drop-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4m0 0-5 5m5-5 5 5"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+            <label class="btn btn-primary" for="tb-file">Choose a video</label>
+            <input type="file" id="tb-file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v,.webm,.3gp" class="sr-only">
+            <p class="tb-file" id="tb-file-name">or drop it here</p>
+          </div>
+          <div id="tb-example" class="tb-example" hidden>
+            <span class="tb-ex-poster" id="tb-ex-poster" aria-hidden="true" hidden></span>
+            <span class="tb-ex-text">
+              <span class="tb-ex-h" id="tb-ex-h">Example</span>
+              <span class="tb-ex-rec" id="tb-ex-rec">Recorded on <span class="tb-ex-logo" role="img" aria-label="Ray-Ban Meta"></span> glasses</span>
+              <span class="tb-ex-meta" id="tb-ex-meta"></span>
+            </span>
+            <button type="button" class="btn btn-sm" id="tb-ex-use" aria-pressed="false">Use it</button>
+          </div>
+          <div id="tb-drive-box" class="tb-field" hidden>
+            <label class="sr-only" for="tb-drive">Link to the video</label>
+            <input type="url" id="tb-drive" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://">
+            <p class="tb-hint">Share it as "Anyone with the link" (up to <span class="tb-drive-max">about 16 GB</span>; only the part analysed is fetched), and switch that off once the test runs.</p>
+          </div>
+          
+          <div class="tb-field tb-piece-f" hidden>
+            <label class="tb-label" for="tb-piece">Piece</label>
+            <select id="tb-piece"><option value="">Not sure - detect it</option></select>
+          </div>
+          
+          <details class="tb-more" hidden>
+            <summary>More</summary>
+            <div class="tb-more-in">
+              <div class="tb-field">
+                <label class="tb-label" for="tb-start">Start at</label>
+                <input type="text" id="tb-start" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="m:ss, like 2:10">
+                <p class="tb-hint" id="tb-start-hint">Leave it empty and the teacher finds the best minute of a longer video itself.</p>
+              </div>
+              
+              <div class="tb-field" hidden>
+                <span class="tb-label" id="tb-midi-l">Piano MIDI</span>
+                <div class="tb-pick tb-pick-start">
+                  <label class="btn btn-sm" for="tb-midi">Choose a .mid</label>
+                  <input type="file" id="tb-midi" accept=".mid,.midi,audio/midi,audio/x-midi" class="sr-only" aria-labelledby="tb-midi-l">
+                  <span class="tb-file" id="tb-midi-name"></span>
+                  <button type="button" class="linkbtn" id="tb-midi-clear" hidden>Remove</button>
+                </div>
+                <p class="tb-hint">What the piano recorded while you filmed, up to <span id="tb-midi-max">512 KB</span>. Not the score. It only checks what Muse says against what you played.</p>
+              </div>
+            </div>
+          </details>
+          
+          <div class="tb-terms" id="tb-terms">
+            <label class="tb-terms-row" for="tb-ok"><input type="checkbox" id="tb-ok"><span>I agree to the <button type="button" class="linkbtn tb-terms-link" id="tb-terms-open" aria-expanded="false" aria-controls="tb-terms-full">terms</button></span></label>
+            <div class="tb-terms-full" id="tb-terms-full" hidden>
+              <span class="tb-agree-text"><b>Ticking the box says:</b><span class="tb-agree-list"><span>It's my playing, or I have the player's OK.</span><span data-if="meta">Frames of the video, and what the teacher measures in it, go to Meta's Model API (SAM 3.1 and Muse).</span><span data-if="voice">Muse's words about the take are spoken by ElevenLabs, a voice service (only the words: never the video or its sound).</span><span>The video is used as below.</span><span>I'm 18 or older.</span></span></span>
+              <ul class="tb-sum" id="tb-sum" hidden></ul>
+              <p class="tb-hint tb-est" id="tb-est"></p>
+              <p class="tb-hint tb-est" id="tb-est-why" hidden></p>
+              <p class="tb-hint tb-est" id="tb-route-note" hidden></p>
+              <details class="tb-consent">
+            <summary>How they are used</summary>
+            <ul>
+              <li>Only film playing that is yours, or a player's who gave you their OK to film and test it.</li>
+              <li>The video goes to the Museverse Teacher's server, which runs the teacher there. <span data-if="samMeta">SAM 3.1, which finds the keyboard and your hands, runs on Meta's Model API: the frames it analyses (5 a second, without the sound) go to Meta for that, under Meta's Model API terms, which are for people 18 or older.</span><span data-if="samReplicate">SAM 3.1, which finds the keyboard and your hands, runs on Replicate: the frames it analyses (5 a second, without the sound) go there for that.</span><span data-if="samHere">SAM 3.1, which finds the keyboard and your hands, runs on the server itself: no frame is sent anywhere.</span> The notes are heard on the server; the sound is not sent anywhere.</li>
+              <li>The video and its lesson are kept on the server for <span class="tb-keep-days">a few</span> days, then deleted.</li>
+              <li>Muse writes the words: Muse Wonder judges what to teach first and Muse Spark words it, both on Meta's Model API, from the teacher's measurements of your take (never the video or its sound). If the server cannot reach them, the teacher's fixed lines word the lesson and nothing goes to a language model.</li>
+              <li data-if="voice">Muse's lines are spoken by ElevenLabs, a voice service: only the words go there, never the video or its sound.</li>
+            </ul>
+          </details>
+            </div>
+          </div>
+        </section>
+
+
+        <div class="tb-navrow">
+          <button type="button" class="btn tb-prev" id="tb-prev">Back</button>
+          <button type="button" class="btn btn-primary btn-lg" id="tb-next" hidden>Next</button>
+          <button type="submit" class="btn btn-primary btn-lg" id="tb-go">Start the analysis</button>
+        </div>
+      </form>
+    </section>
+
+    <p class="tb-msg" id="tb-msg" role="status" aria-live="polite"></p>
+
+    <section id="tb-jobs" class="tb-view tb-tests" data-view="tests" aria-label="History" hidden>
+      
+      <div class="tb-run" id="tb-run" hidden>
+        <div class="tb-run-head"><button type="button" class="tb-nav tb-run-back" data-act="unfocus" id="tb-run-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M15 6l-6 6 6 6"/></svg>History</button>
+          <h3 class="tb-run-h" id="tb-run-h">Analysing now</h3></div>
+        <div class="tb-run-top" id="tb-run-top"></div>
+        <div class="tb-now" id="tb-now" hidden>
+          <iframe id="tb-anim" class="tb-anim" data-src="calibration.html" title="The step running now, as the piano's calibration" tabindex="-1" aria-hidden="true"></iframe>
+        </div>
+        <ol class="tb-list" id="tb-list"></ol>
+      </div>
+      <p class="tb-empty" id="tb-empty">No tests yet.</p>
+      
+      <section class="tb-libbox" id="tb-lib-box" aria-labelledby="tb-lib-h" hidden>
+        <div class="tb-lib-head"><h2 id="tb-lib-h">History</h2><span class="tb-lib-n tb-num" id="tb-lib-n"></span>
+          <button type="button" class="linkbtn" id="tb-lib-all" aria-pressed="false">Show details</button></div>
+        <p class="tb-lib-lead">Your takes, newest first. Tap one to open its lesson.</p>
+        <ol class="tb-lib" id="tb-lib"></ol>
+      </section>
+      <footer class="tb-foot">
+        <details class="disclose tb-help"><summary>Help</summary><div class="disclose-body">
+          <p>The server analyses one take at a time: a take waits its turn, and the time left shows while it runs.</p>
+          <p><span id="tb-foot-rate">Times are for this server.</span></p>
+        </div></details>
+        <p><span id="tb-who">Private: only you can start or delete tests</span> <span id="tb-storage"></span></p>
+      </footer>
+    </section>
+  </main>
+</div>
+
+
+<div id="tb-mv" class="mv" hidden></div>
+
+<div id="tb-teacher" hidden>
+  <div class="tb-bar">
+    <div class="tb-bar-in">
+      <button type="button" class="btn btn-sm" id="tb-back" data-word="History"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg>Test bench</button>
+      <span class="tb-bar-name" id="tb-bar-name"></span>
+      <p class="tb-bar-wait" id="tb-bar-wait" role="status" aria-live="polite" hidden></p>
+    </div>
+  </div>
+  
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap topbar">
+    <div class="brandline">
+      <a class="brand" href="./" id="home-link"><span class="eyebrow">Museverse</span><span class="brandname">Teacher</span></a>
+      <span class="badge">Beta</span>
+    </div>
+    <nav class="topnav" aria-label="Main">
+      <a class="navlink nav-demos" href="./#demos" data-go="demos" id="nav-browse">Demos</a>
+      <a class="navlink nav-cta" href="./#upload" data-go="upload"><span class="nav-long">Analyse a video</span><span class="nav-short">Analyse</span></a>
+    </nav>
+  </div>
+</header>
+
+<main id="main" class="wrap" tabindex="-1">
+  <p id="global-msg" class="msg err banner" role="alert" hidden></p>
+
+  
+  <section id="v-home" class="view" aria-labelledby="h-home" hidden>
+    <div class="hero">
+      <h1 id="h-home">Feedback on your piano technique, from <span class="grad">one take</span></h1>
+      <p class="lede" id="hero-lede">Film yourself playing, or open a demo. Your teacher watches your hands, listens to the notes, and tells you what to practise next.</p>
+      
+      <div class="row hero-cta">
+        <a class="btn btn-primary btn-lg" href="#demos" id="hero-browse">Try a demo</a>
+        <a class="btn btn-lg" href="#upload">Analyse my video</a>
+      </div>
+    </div>
+
+    
+    <section id="takes" class="home-sec takes-sec" aria-labelledby="h-takes" tabindex="-1" hidden>
+      <div class="takes-head">
+        <h2 id="h-takes" class="sec-title">Your takes</h2>
+        <button type="button" class="linkbtn small" id="takes-clear">Clear the list</button>
+      </div>
+      <p class="small muted takes-note">Kept in this browser only: nothing about this list is sent to the server. Each take opens for as long as the server keeps it.</p>
+      <ul class="takes" id="takes-list" role="list"></ul>
+    </section>
+
+    <section class="home-sec how" aria-labelledby="h-how">
+      <h2 id="h-how" class="sec-title">How it works</h2>
+      <ol class="how-steps">
+        <li>
+          <span class="how-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/></svg></span>
+          <span class="how-n" aria-hidden="true">1</span>
+          <h3><span class="sr-only">Step 1: </span>Record a take</h3>
+          <p>30 seconds or more, phone above the keys, sound on. <span id="how-long">A longer video is fine: I find the minute with the most playing.</span><span id="how-pick"> Or pick a demo.</span></p>
+        </li>
+        <li>
+          <span class="how-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h1.5M7 8.5v7M10.5 5v14M14 9v6M17.5 6.5v11M21 12h-.5"/></svg></span>
+          <span class="how-n" aria-hidden="true">2</span>
+          <h3><span class="sr-only">Step 2: </span>Your teacher looks and listens</h3>
+          <p>It finds your hands on the keys and hears every note you play.</p>
+        </li>
+        <li>
+          <span class="how-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg></span>
+          <span class="how-n" aria-hidden="true">3</span>
+          <h3><span class="sr-only">Step 3: </span>Practise what matters</h3>
+          <p>The one thing to work on first, how to practise it, and answers to your questions, out loud too.</p>
+        </li>
+      </ol>
+    </section>
+
+    
+    <section id="samples" class="home-sec" aria-labelledby="h-samples" tabindex="-1" hidden>
+      <div class="sec-head">
+        <h2 id="h-samples" class="sec-title">Open a sample lesson</h2>
+        <p class="muted">Phone videos our team filmed at the piano, already analysed. Open one to see the hands found on the keys, read the lesson and ask the teacher about it. No piano needed.</p>
+      </div>
+      <div class="demo-grid" id="sample-grid" aria-live="polite"></div>
+    </section>
+
+    <section id="demos" class="home-sec" aria-labelledby="h-demos" tabindex="-1">
+      <div class="sec-head">
+        <h2 id="h-demos" class="sec-title">Try a demo</h2>
+        <p class="muted">Real takes played on a Meta Quest headset in the Museverse app, which records both hands and every note. Open one to watch the hands, read the advice and ask about it.</p>
+      </div>
+      <div class="demo-grid" id="demo-grid" aria-live="polite" aria-busy="true">
+        <p class="small muted">Loading the demos...</p>
+      </div>
+    </section>
+
+    <section id="upload" class="home-sec" aria-labelledby="h-upload" tabindex="-1">
+      <div class="sec-head">
+        <h2 id="h-upload" class="sec-title">Analyse your video</h2>
+        <p class="muted">Three steps. Film a real piano, and get the same advice on your own playing.</p>
+      </div>
+      <form id="up-form" class="glass panel stack" novalidate aria-labelledby="h-upload">
+        
+        <div class="retake-card" id="retake-card" role="group" aria-labelledby="retake-h" hidden>
+          <p class="eyebrow">A re-take</p>
+          <h3 id="retake-h">Film <span id="retake-what">this part</span> again</h3>
+          <p class="retake-do" id="retake-do"></p>
+          <p class="small muted" id="retake-how"></p>
+          <div class="row"><button type="button" class="btn btn-sm" id="retake-cancel">Not a re-take</button></div>
+        </div>
+        <ol class="fsteps" role="list">
+          
+          <li class="fstep" id="fs-1">
+            <span class="fstep-n" aria-hidden="true"><b>1</b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+            <div class="fstep-main">
+              <h3 class="fstep-h">Choose your video<span class="sr-only fstep-sr"></span></h3>
+              <div class="pick-grid">
+                <div id="drop" class="drop">
+                  <input id="f-video" class="sr-only" type="file" accept="video/*" aria-describedby="drop-hint">
+                  <label for="f-video" id="drop-empty" class="drop-empty">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+                    <span class="big">Drop your video here</span>
+                    <span class="btn btn-sm" aria-hidden="true">Choose a video</span>
+                    <span id="drop-hint" class="small muted">MP4, MOV or WebM from your phone, up to 400 MB</span>
+                  </label>
+                  <div id="picked" class="picked" hidden>
+                    <span class="picked-ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+                    <span class="name" id="picked-name"></span>
+                    <span class="small muted" id="picked-meta"></span>
+                    <span class="small warn" id="picked-warn" hidden></span>
+                    <label for="f-video" class="btn btn-sm">Choose another video</label>
+                  </div>
+                </div>
+                <div class="film-slot" id="film-upload"></div>
+              </div>
+              
+              <div class="filepill" id="start-row" hidden>
+                <label class="small" for="f-start">Start at (optional)</label>
+                <input id="f-start" class="small startat" type="text" inputmode="numeric" autocomplete="off" placeholder="m:ss" maxlength="8" aria-describedby="start-hint">
+                <span id="start-hint" class="small muted">Leave it empty and I pick the minute with the most playing.</span>
+              </div>
+              <div class="filepill">
+                
+                <input id="f-ref" class="sr-only" type="file" accept=".mid,.midi,audio/midi,audio/x-midi" aria-labelledby="ref-lbl">
+                <label class="btn btn-sm" for="f-ref" id="ref-lbl">Add the score (MIDI, optional)</label>
+                <span id="ref-name" class="small muted">With the score, the teacher can also point out wrong, missed and extra notes.</span>
+                <button type="button" id="ref-clear" class="linkbtn small" hidden>Remove</button>
+              </div>
+              <div class="filepill" id="piece-row" hidden>
+                <label class="small" for="f-piece">Or a piece from our library</label>
+                <select id="f-piece" class="small"><option value="">None</option></select>
+              </div>
+              
+              <div class="filepill" id="perf-row">
+                <input id="f-perf" class="sr-only" type="file" accept=".mid,.midi,audio/midi,audio/x-midi" aria-labelledby="perf-lbl" aria-describedby="perf-name">
+                <label class="btn btn-sm" for="f-perf" id="perf-lbl">Add your piano's MIDI (optional)</label>
+                <span id="perf-name" class="small muted">The MIDI your piano recorded while you filmed: the notes come out exact, and the video still shows the hands. Keep the piano's own sound on, so the MIDI can be lined up with the video.</span>
+                <button type="button" id="perf-clear" class="linkbtn small" hidden>Remove</button>
+              </div>
+              
+              <div class="filepill" id="win-row" role="radiogroup" aria-labelledby="win-lbl" hidden>
+                <span class="small" id="win-lbl">How much to analyse</span>
+                <label class="small winpick"><input type="radio" name="f-window" value="30"> 30 s</label>
+                <label class="small winpick"><input type="radio" name="f-window" value="60" checked> 60 s</label>
+                <span class="small muted" id="win-hint">The 30 or 60 seconds with the most playing. 30 s is ready sooner.</span>
+              </div>
+            </div>
+          </li>
+
+          <li class="fstep" id="fs-2">
+            <span class="fstep-n" aria-hidden="true"><b>2</b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+            <div class="fstep-main">
+              <h3 class="fstep-h">Agree<span class="sr-only fstep-sr"></span></h3>
+              
+              <div class="consent stack">
+                <div class="check">
+                  <input id="f-consent" type="checkbox" aria-describedby="consent-list">
+                  <div>
+                    <label for="f-consent">I agree that:</label>
+                    <ul id="consent-list">
+                      <li>Checking how this server handles your video...</li>
+                    </ul>
+                  </div>
+                </div>
+                
+                <div class="check" id="tip-row" hidden>
+                  <input id="f-tip" type="checkbox" aria-describedby="tip-why">
+                  <div>
+                    <label for="f-tip">Let a Meta model look at 4 still frames from my video to suggest how to film the next take.</label>
+                    <p class="small muted" id="tip-why"></p>
+                  </div>
+                </div>
+                <div class="check" id="adult-row" hidden>
+                  <input id="f-adult" type="checkbox" aria-describedby="adult-why">
+                  <div>
+                    <label for="f-adult">I am 18 or older.</label>
+                    <p class="small muted" id="adult-why">This server uses Meta's Model API, and Meta's terms allow it for adults only.</p>
+                  </div>
+                </div>
+                <p class="small"><a class="tap-link" href="#privacy">Privacy notice</a></p>
+              </div>
+            </div>
+          </li>
+
+          <li class="fstep" id="fs-3">
+            <span class="fstep-n" aria-hidden="true"><b>3</b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+            <div class="fstep-main">
+              <h3 class="fstep-h">Analyse<span class="sr-only fstep-sr"></span></h3>
+              
+              <div class="filepill" id="code-row" hidden>
+                <label class="small" for="f-code">Judge code</label>
+                <input id="f-code" class="small codein" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="128" aria-describedby="code-hint">
+                <span id="code-hint" class="small muted">From the submission.</span>
+              </div>
+              <div class="row">
+                <button type="submit" class="btn btn-primary btn-lg" id="up-go">Analyse my playing</button>
+                <button type="button" class="btn" id="up-cancel" hidden>Cancel upload</button>
+              </div>
+              
+              <p class="small muted" id="up-time">Checking how long it takes on this server... You can close the page and come back with its link.</p>
+              <div id="up-progress" class="stack tight" hidden>
+                <div class="bar" role="progressbar" aria-label="Upload" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="up-bar"><span></span></div>
+                <span class="small" id="up-text" aria-live="polite"></span>
+              </div>
+              <p id="up-msg" class="msg err" role="alert" hidden></p>
+            </div>
+          </li>
+        </ol>
+      </form>
+    </section>
+  </section>
+
+  
+  <section id="v-progress" class="view" aria-labelledby="h-progress" hidden>
+    <div class="glass panel stack progress-card">
+      <div class="stack tight">
+        <h2 id="h-progress">Analysing your take</h2>
+        <p class="small muted idline" id="pr-name"></p>
+      </div>
+      <div class="stack tight">
+        <div class="bar" role="progressbar" aria-labelledby="pr-step" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="pr-bar"><span></span></div>
+        <div class="row spread">
+          <span id="pr-step" aria-live="polite"></span>
+          <span id="pr-eta" class="small muted"></span>
+        </div>
+      </div>
+      <ol class="steps simple" id="pr-steps" role="list" aria-label="Analysis steps"></ol>
+      <div class="comeback" id="pr-comeback">
+        <p>You can close this page. Come back with this link:</p>
+        <div class="row">
+          <button type="button" class="btn btn-sm" id="pr-copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M15 9V6.5A2.5 2.5 0 0 0 12.5 4h-6A2.5 2.5 0 0 0 4 6.5v6A2.5 2.5 0 0 0 6.5 15H9"/></svg>Copy link
+          </button>
+          <span id="pr-copied" class="small" aria-live="polite"></span>
+        </div>
+        <p class="small muted">Results are kept for <span class="keep-days">a limited time</span>.</p>
+        <p class="small muted" id="pr-code-note" hidden>On another device or browser, the link asks for your judge code again.</p>
+      </div>
+      
+      <div id="pr-fail" class="failbox stack" role="alert" hidden>
+        <p class="fail-lead" id="pr-lead"></p>
+        <div class="stack tight" id="pr-try">
+          <p><b>What to try</b></p>
+          <ul class="tips" id="pr-tips"></ul>
+          <div class="film-slot" id="pr-film"></div>
+        </div>
+        <div class="row"><button type="button" class="btn btn-primary" id="pr-again">Try another video</button><button type="button" class="btn" id="pr-retry" hidden>Check again</button></div>
+      </div>
+      <details class="disclose" id="pr-details">
+        <summary>Details</summary>
+        <div class="stack tight disclose-body">
+          <p class="small muted" id="pr-said">The server said: <span id="pr-err" class="errtext"></span></p>
+          <p class="small muted">Job <span class="mono" id="pr-id"></span></p>
+          <ol class="steps" id="pr-tech" aria-label="Analysis steps, with their times"></ol>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  
+  <section id="v-muse" class="view" aria-label="Your lesson" hidden>
+    <div id="muse-view" class="mv" hidden></div>
+  </section>
+
+  
+  <section id="v-results" class="view" aria-labelledby="h-results" hidden>
+    <header class="r-head">
+      <button type="button" class="backlink" id="r-new"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg><span id="r-new-t">All demos</span></button>
+      <p class="eyebrow" id="r-kind"></p>
+      <h2 id="h-results">Your take</h2>
+      
+      <p id="r-lesson-row" hidden><button type="button" class="btn btn-sm" id="r-lesson">Back to the lesson</button></p>
+      <p class="r-sub" id="r-sub" hidden></p>
+      <p class="r-who small muted" id="r-who" hidden></p>
+      
+      <p class="small" id="r-get" hidden><a class="tap-link" id="r-get-a" href="#" download>Download this video</a> <span class="muted">(the part the lesson looked at) to upload it yourself and see the lesson made again, under its player's agreement.</span></p>
+      <p class="r-say" id="r-say"></p>
+      <p class="r-meta" id="r-meta"></p>
+      <div class="row r-actions" id="r-actions">
+        <button type="button" class="btn btn-primary btn-lg" id="t-start" aria-describedby="t-hint">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>Walk me through it
+        </button>
+        <button type="button" class="btn btn-lg" id="r-ask">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.1A8 8 0 1 1 20 12z"/></svg>Ask your teacher
+        </button>
+        <p class="small muted" id="t-hint">Plays each moment, then shows you what to try.</p>
+      </div>
+    </header>
+
+    <div class="r-grid">
+      <section class="r-step r-watch" aria-labelledby="h-watch">
+        <div class="player-col">
+          <div class="step-head">
+            <span class="step-n" aria-hidden="true">1</span>
+            <h3 id="h-watch"><span class="sr-only">Step 1: </span>Watch</h3>
+          </div>
+          <div class="glass player" id="player">
+            
+            <div class="video-stage" id="video-stage">
+              <div class="stage" id="stage">
+                <video id="vid" controls playsinline preload="metadata"></video>
+                <canvas id="ov" aria-hidden="true"></canvas>
+                <div class="hud" id="hud" aria-hidden="true"></div>
+                
+                <span class="clipclock" id="clip-clock" aria-hidden="true" hidden></span>
+                
+                <p class="notice" id="vid-notice" role="status" tabindex="0" hidden></p>
+              </div>
+              
+              <div class="teacher" id="teacher" hidden>
+                <div class="teacher-top">
+                  <span class="state" id="t-state" aria-live="polite"></span>
+                  <div class="row teacher-ctrls">
+                    <button type="button" class="btn btn-sm" id="t-mute" aria-pressed="false">Mute</button>
+                    <button type="button" class="btn btn-sm" id="t-pause">Pause</button>
+                    <button type="button" class="btn btn-sm" id="t-next">Next</button>
+                    <button type="button" class="btn btn-sm" id="t-stop">Stop</button>
+                  </div>
+                </div>
+                <p class="caption" id="t-caption" aria-live="polite"></p>
+                
+                <button type="button" class="btn btn-primary voice-tap" id="voice-tap" hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>Tap to hear Muse
+                </button>
+                <p class="small muted vcredit" id="voice-credit" hidden>Voice by ElevenLabs</p>
+              </div>
+              <div class="timeline" id="timeline">
+                <canvas id="roll" role="img" aria-label="Timeline of phrases and notes; left hand purple, right hand pink"></canvas>
+                <div class="marks" id="marks" aria-label="Findings on the timeline"></div>
+                <div class="playhead" id="playhead" aria-hidden="true"></div>
+              </div>
+              
+              <div class="legend sec-key" id="sec-key" hidden>
+                <span data-s="good"><i class="sg"></i>Played well</span><span data-s="fix"><i class="sf"></i>To fix</span><span data-s="unsure"><i class="su"></i>Couldn't tell</span>
+              </div>
+              
+              <div class="legend hand-verdict" id="hand-verdict" hidden></div>
+              <div class="ctrls">
+                <label class="toggle"><input type="checkbox" id="ov-on" checked> Show keyboard and hands</label>
+                <details class="explain" id="ov-explain">
+                  <summary>What am I seeing?</summary>
+                  <div class="explain-body">
+                    <div class="legend" aria-label="Overlay legend">
+                      <span><i class="lk"></i>Keyboard</span><span><i class="ll"></i>Left hand</span><span><i class="lr"></i>Right hand</span><span><i class="ld"></i>Hand lifted</span>
+                    </div>
+                    <div class="legend"><span><i class="ll"></i>Left-hand notes</span><span><i class="lr"></i>Right-hand notes</span><span><i class="lu"></i>Hand not seen</span><span id="lg-ref" hidden><i class="lx"></i>Differs from the score</span></div>
+                    <p class="small muted">The coloured marks under the notes are the moments the advice is about. Tap one to play it, or tap the notes to jump there.</p>
+                  </div>
+                </details>
+              </div>
+              <p class="small muted stage-note" id="clip-note" hidden></p>
+              <p class="small muted stage-note" id="ov-note" hidden>The hand and keyboard outlines are rough boxes from Meta's hosted model, not their exact shapes.</p>
+              
+              <div class="film-slot stage-note" id="r-film" hidden></div>
+            </div>
+            
+            <div class="hands-stage" id="hands-stage" hidden></div>
+            <div class="voicepick" id="voice-row">
+              <button type="button" class="btn btn-sm" id="voice-stop" hidden>Stop speaking</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="r-side">
+        
+        <p class="glass panel small retaken" id="retaken" hidden></p>
+        
+        <section class="glass panel cmp" id="cmp" aria-labelledby="h-cmp" hidden>
+          <div class="cmp-top">
+            <h3 id="h-cmp">Before and after</h3>
+            <span class="small muted" id="cmp-when"></span>
+          </div>
+          <p class="cmp-lead" id="cmp-lead"></p>
+          <h4 class="cmp-sec" id="cmp-bars-h">Bar by bar</h4>
+          <ul class="cmp-rows" id="cmp-bars" role="list" aria-labelledby="cmp-bars-h"></ul>
+          <p class="small muted" id="cmp-other" hidden></p>
+          <h4 class="cmp-sec" id="cmp-finds-h">What was found</h4>
+          <ul class="cmp-rows" id="cmp-finds" role="list" aria-labelledby="cmp-finds-h"></ul>
+          <p class="fine" id="cmp-note"></p>
+        </section>
+
+        <section class="r-step" aria-labelledby="h-find">
+          <div class="step-head">
+            <span class="step-n" aria-hidden="true">2</span>
+            <h3 id="h-find"><span class="sr-only">Step 2: </span>What to work on</h3>
+            <span class="small muted step-aside" id="find-count"></span>
+          </div>
+          
+          <div class="findings" id="findings"></div>
+          <p class="small muted plan-none" id="plan-none" hidden></p>
+          
+          <section class="glass panel rc" id="rc" aria-labelledby="h-rc" hidden></section>
+          <section class="glass panel stack ref" id="ref" aria-labelledby="h-ref" hidden></section>
+        </section>
+
+        
+        <section class="r-step" id="plan" aria-labelledby="h-plan" hidden>
+          <div class="step-head">
+            <span class="step-n" aria-hidden="true" id="plan-n">3</span>
+            <h3 id="h-plan"><span class="sr-only" id="plan-sr">Step 3: </span>Your practice plan</h3>
+            <span class="small muted step-aside" id="plan-mins"></span>
+          </div>
+          <div class="glass panel plan" id="plan-body"></div>
+        </section>
+
+        <section class="r-step" id="well" aria-labelledby="h-well" hidden>
+          <div class="step-head">
+            <span class="step-n" aria-hidden="true" id="well-n">3</span>
+            <h3 id="h-well"><span class="sr-only" id="well-sr">Step 3: </span>What went well</h3>
+            <span class="small muted step-aside" id="well-count"></span>
+          </div>
+          <ul class="wells" id="strengths" role="list"></ul>
+        </section>
+
+        
+        <section class="r-step chat-step" id="chat" aria-labelledby="h-chat" tabindex="-1">
+          <div class="step-head">
+            <span class="step-n" aria-hidden="true" id="chat-n">4</span>
+            <h3 id="h-chat"><span class="sr-only" id="chat-sr">Step 4: </span>Ask your teacher</h3>
+          </div>
+          <div class="glass panel chat">
+            <p class="small muted">Ask about anything above by typing. I answer from this take only.</p>
+            <div id="chat-mount"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    
+    <details class="r-details" id="r-details">
+      <summary><span class="r-details-t">Details</span><span class="small muted">The numbers, how this take was analysed, and what it can't judge</span></summary>
+      <div class="r-details-body">
+        <section class="dsec" aria-labelledby="h-d-about">
+          <h4 id="h-d-about">About this take</h4>
+          <p id="r-blurb" hidden></p>
+          <p class="caveat" id="r-caveat" tabindex="-1" hidden></p>
+          <p class="r-source" id="r-source"><span class="dot" aria-hidden="true"></span><span id="r-source-t"></span></p>
+          <p class="small muted" id="r-sound" hidden></p>
+          <p class="small muted" id="r-say-row" hidden>The summary: <span class="src" id="r-say-src"></span></p>
+        </section>
+        <section class="dsec" aria-labelledby="h-d-stats">
+          <h4 id="h-d-stats">The numbers</h4>
+          <dl class="kv" id="r-stats"></dl>
+        </section>
+        <section class="dsec" id="d-evidence" aria-labelledby="h-d-ev">
+          <h4 id="h-d-ev">How each point was measured</h4>
+          
+          <p class="small muted" id="conf-key" hidden></p>
+          <ul class="evlist" id="r-evidence"></ul>
+        </section>
+        <section class="dsec" aria-labelledby="h-limits">
+          <h4 id="h-limits">What this can't judge</h4>
+          <ul id="limits"></ul>
+        </section>
+        <section class="dsec" aria-labelledby="h-d-how">
+          <h4 id="h-d-how">How this take was analysed</h4>
+          
+          <div class="r-dl" id="r-dl"></div>
+          <ol class="steps" id="r-steps" aria-label="Analysis steps and times"></ol>
+        </section>
+        <section class="dsec" aria-labelledby="h-d-voice" hidden>
+          <h4 id="h-d-voice">Your teacher's voice</h4>
+          <p class="small muted" id="voice-note"></p>
+          <label class="toggle"><input type="checkbox" id="auto-on" checked> Start talking as soon as a take opens</label>
+          <div class="row">
+            <label for="voice-sel" id="voice-lbl" class="small" hidden>Voice</label>
+            <select id="voice-sel" hidden></select>
+          </div>
+        </section>
+      </div>
+    </details>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <div class="foot-main">
+      <p class="foot-brand"><span class="eyebrow">Museverse</span><span class="brandname">Teacher</span></p>
+      <p class="small muted">Uploads are deleted from this server after <span class="keep-days">a limited time</span>.</p>
+      <p class="small muted">Questions or deletion: <span class="contact">hello@museverse.xyz</span></p>
+      <p class="small"><a class="tap-link" href="new/" id="foot-new">What we built during the hackathon</a> <span class="muted" aria-hidden="true">·</span> <a class="tap-link" href="how/" id="foot-how">How it works</a> <span class="muted" aria-hidden="true">·</span> <a class="tap-link" href="notices.html">Notices</a></p>
+    </div>
+
+    <details class="foot-more" id="about">
+      <summary>How the teacher works</summary>
+      <div class="stack tight foot-more-body">
+        <p><strong>What is measured.</strong> <span id="about-demo">For a demo, the Museverse Quest app recorded both hands (26 points each, up to 90 times a second) and every note straight from the piano. </span>For your own video, the notes and their timing come from its sound, or from your piano's MIDI when you add it, and SAM 3.1 finds the keyboard and your hands in the frames. Which finger played, finger curvature and tension are not judged.</p>
+        <p><strong>The voice is your browser's.</strong> Meta has no text-to-speech yet, so your browser reads the teacher's lines aloud. The wording and the answers come from Meta's Muse<span id="muse-via"></span>, our own Muse Glimmer server, or fixed lines, depending on this server and the take; each says which.</p>
+        <p class="small muted" id="health"></p>
+      </div>
+    </details>
+
+    
+    <details class="foot-more privacy" id="privacy">
+      <summary>Privacy notice</summary>
+      <section class="privacy-body" aria-labelledby="h-privacy">
+        <h2 id="h-privacy">Privacy notice for the Museverse Teacher beta</h2>
+        <p>This notice covers the Museverse Teacher beta on this page. Museverse runs it.</p>
+        <h3>What is collected</h3>
+        <ul>
+          <li>The video you upload, with its sound, and its file name; the score file, if you add one; and the MIDI your piano recorded while you filmed, if you add it. That MIDI file stays on this server: its notes become your lesson's notes when it can be lined up with the video.</li>
+          <li>What the analysis makes from it: frames from the video (5 a second), the notes heard, where the keyboard and your hands are, and the teacher's remarks.</li>
+          <li>The questions you type or speak to the teacher. Your browser sends each one with the conversation so far; this server answers it and does not keep it, or the recording of a spoken one.</li>
+          <li>That you ticked the agreement before uploading and, when it is asked, that you are 18 or older. Before your first spoken question, that you are 18 or older and agreed that your voice goes to Meta. The server also logs requests and their times.</li>
+          <li>An access token or a judge code, if this server asks for one, is kept in your browser only, and so is the key to each take you upload with a judge code.</li>
+          <li>The list of your takes on the home page (each one's link, the video's file name, its piece, the day, the part analysed and what was found) is kept in your browser only: nothing about it is sent to this server. Remove a take from it, or clear it, there; forgetting the access token and judge code on this device clears it too.</li>
+          <li>When you film part of a take again, which take it films again, so the two can be compared. The comparison holds your first take's numbers, and it opens for whoever can open the re-take: the access token, the judge code both were uploaded with, or the re-take's key in this browser.</li>
+        </ul>
+        <h3>Where it is processed</h3>
+        <p>On this server<span id="privacy-where-more"></span>. <span id="privacy-voice-line">Your browser reads the teacher's lines aloud with its own voice.</span> If the mic uses your browser's own speech recognition, your browser may send your voice to its maker.</p>
+        
+        <div id="privacy-demos">
+        <h3>The demos</h3>
+        <p>The demos are takes recorded in the Museverse Quest app. Nothing made from them, including what you ask about them, is sent to Meta's hosted Muse<span id="privacy-demo-via"></span> unless Meta has agreed to it in writing; <span id="privacy-demo">this server's settings are being checked</span>.</p>
+        </div>
+        
+        <div id="privacy-samples" hidden>
+        <h3>The sample lessons</h3>
+        <p>The sample lessons are phone videos our team filmed, shown with each player's agreement. A question you type about one goes to a hosted AI model only when that sample's player agreed to it, you tick that you are 18 or older, and this server uses one<span id="privacy-samples-via"></span>; the line under the question box says who answers. A sample's video uploaded again is still its player's take: their agreement holds for it, whatever boxes are ticked, and its frames stay on this server. This server does not keep your questions; it counts them for a few minutes, by your address, to limit how many one visitor can ask.</p>
+        </div>
+        <h3>What goes to Meta</h3>
+        <div id="privacy-meta" class="stack tight"><p>Checking this server's settings...</p></div>
+        
+        <div id="privacy-openrouter" class="stack tight" hidden></div>
+        
+        <div id="privacy-open" class="stack tight" hidden></div>
+        
+        <div id="privacy-tip" class="stack tight" hidden></div>
+        
+        <div id="privacy-replicate" class="stack tight" hidden></div>
+        <div id="privacy-voice" class="stack tight" hidden></div>
+        <h3>How long it is kept</h3>
+        <p>Your upload, its score and its MIDI files, and everything made from them are deleted from this server <span class="keep-days">a limited time</span> after you upload it, and so is the record of your agreement to spoken questions. Until then, anyone with the result's link and this server's access token can open it, and so can anyone with the link and the judge code it was uploaded with, if it was.</p>
+        <h3>Age</h3>
+        <p>When this server uses Meta's Model API, you must be 18 or older to upload, and to ask the teacher out loud through Meta's speech-to-text.<span id="privacy-age-more"></span></p>
+        <h3>Deletion and questions</h3>
+        <p>To have a take deleted sooner, or with any question about your data, email <span class="contact">hello@museverse.xyz</span> with the job number shown on your result.</p>
+      </section>
+    </details>
+
+    <p class="small"><button type="button" class="linkbtn" id="forget-token" hidden>Forget the access token, the judge code and your takes on this device</button></p>
+  </div>
+</footer>
+
+<dialog id="token-dlg" aria-labelledby="token-h">
+  <form method="dialog">
+    <h3 id="token-h">Access token</h3>
+    <p id="token-msg" class="small"></p>
+    <label for="token-in" class="small" id="token-lbl">Token</label>
+    <input type="password" id="token-in" autocomplete="off" spellcheck="false">
+    <div class="row">
+      <button type="submit" class="btn btn-primary" value="ok" id="token-ok">Use token</button>
+      <button type="submit" class="btn" value="cancel" formnovalidate>Cancel</button>
+    </div>
+    <p class="small muted">It is kept in this browser only, so you are asked once.</p>
+  </form>
+</dialog>
+
+
+<template id="film-tpl">
+  <div class="howto film-card" role="group" aria-label="How to film it">
+    <h4>How to film it</h4>
+    <svg class="film-pic" viewBox="0 0 168 96" aria-hidden="true">
+      <rect x="2" y="2" width="164" height="92" rx="12" fill="none" stroke="currentColor" stroke-opacity="0.55" stroke-width="2.5"/>
+      <rect x="14" y="44" width="152" height="38" fill="#F5F2EE" fill-opacity="0.9"/>
+      <rect x="10" y="40" width="6" height="44" rx="2" fill="currentColor" fill-opacity="0.6"/>
+      <path d="M30 44v38M46 44v38M62 44v38M78 44v38M94 44v38M110 44v38M126 44v38M142 44v38M158 44v38" stroke="#1A1918" stroke-opacity="0.35" stroke-width="1"/>
+      <path d="M26 44h8v22h-8zM42 44h8v22h-8zM74 44h8v22h-8zM90 44h8v22h-8zM106 44h8v22h-8zM138 44h8v22h-8zM154 44h8v22h-8z" fill="#1A1918" fill-opacity="0.85"/>
+      <path d="M40 46c0-9 5-16 13-16s13 7 13 16v10H40z" fill="#A855F7" fill-opacity="0.75"/>
+      <path d="M98 46c0-9 5-16 13-16s13 7 13 16v10H98z" fill="#EC4899" fill-opacity="0.75"/>
+      <rect x="2" y="2" width="164" height="92" rx="12" fill="none" stroke="currentColor" stroke-opacity="0.55" stroke-width="2.5"/>
+    </svg>
+    <ul class="ticks film-list">
+      <li><b>Landscape</b>: turn the phone on its side</li>
+      <li>Phone <b>above and behind your hands</b>, looking down at the keys</li>
+      <li><b>Both hands fully inside</b> the picture</li>
+      <li><b>One end of the keyboard</b> in the picture</li>
+      <li><b>30 to 60 seconds</b> of playing, sound on</li>
+      <li>A digital piano that records MIDI? Record that too, with the piano's own sound on (not headphones), and add it with your video: the notes come out exact</li>
+      <li>iPhone HDR is fine: it is converted to standard colour for you</li>
+    </ul>
+  </div>
+</template>
+</div>
+
+<script type="application/json" id="tb-state">{"v":1,"wake":0}</script>
+<script src="testbench-config.js"></script>
+<script src="testbench-server.js"></script>
+<script src="testbench-wave.js" defer></script>
+<script src="ghost-synth.js" defer></script>
+<script src="ghost-recorded.js" defer></script>
+<script src="listen.js" defer></script>
+<script src="outline-sync.js" defer></script>
+<script src="testbench-muse.js" defer></script>
+<script src="ghost-assets.js" defer></script>
+<script src="stage-ghost.js" defer></script>
+
+
+<script src="piano-sampler.js" defer></script>
+<script src="splendid-piano.js" defer></script>
+<script src="ghost-overlay.js" defer></script>
+<script src="score-card.js" defer></script>
+<script src="muse.js" defer></script>
+<script src="stage-hands.js" defer></script>
+<script src="voices.js" defer></script>
+<script src="chat.js" defer></script>
+<script src="app.js" defer></script>
+<script src="testbench.js" defer></script>

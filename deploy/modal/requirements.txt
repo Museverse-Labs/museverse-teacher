@@ -1,0 +1,4 @@
+# the Modal client that deploys modal_app.py and runs weights.sh and check_deploy.py (not installed in the image)
+# pinned to the version check_deploy.py ran with on 2026-10-27; older ones are untested (startup_timeout alone
+# needs 1.1.4 or later: modal.com/docs/guide/timeouts)
+modal==1.6.2

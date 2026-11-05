@@ -1,0 +1,12 @@
+data/
+assets/
+__pycache__/
+*.pyc
+*.grp2
+*.mid
+*.midi
+*.musicxml
+*.mp4
+*.mov
+*.glb
+!web/static/models/hands/generic-hand/*.glb

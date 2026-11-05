@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Piano calibration</title>
+
+
+
+
+
+
+
+
+
+
+
+<style>
+
+
+:root{color-scheme:dark}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:transparent;overflow:hidden}
+#frame{position:fixed;inset:0;background:transparent}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;transition:opacity .9s ease}
+@media (prefers-reduced-motion:reduce){#gl{transition:none}}
+</style>
+</head>
+<body>
+<div id="frame"><canvas id="gl"></canvas></div>
+<script src="vendor/three-r128/three.min.js"></script>
+<script src="vendor/three-r128/loaders/GLTFLoader.js"></script>
+<script src="vendor/three-r128/postprocessing/Pass.js"></script>
+<script src="vendor/three-r128/shaders/CopyShader.js"></script>
+<script src="vendor/three-r128/shaders/LuminosityHighPassShader.js"></script>
+<script src="vendor/three-r128/postprocessing/EffectComposer.js"></script>
+<script src="vendor/three-r128/postprocessing/RenderPass.js"></script>
+<script src="vendor/three-r128/postprocessing/ShaderPass.js"></script>
+<script src="vendor/three-r128/postprocessing/UnrealBloomPass.js"></script>
+<script src="piano-assets.js"></script>
+<script src="ghost-assets.js"></script>
+<script src="stage-ghost.js"></script>
+<script src="ghost-synth.js"></script>
+<script src="calibration.js"></script>
+</body>
+</html>

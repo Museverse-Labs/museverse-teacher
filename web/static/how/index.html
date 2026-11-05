@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How it works - Museverse Teacher</title>
+<meta name="description" content="How the Museverse Teacher goes from a video of you at the piano to its findings, a practice plan and answers: which Meta model does what, the rules that keep it honest, what was measured, the tests and the licences.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#1A1918">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%23C084FC'/%3E%3Cstop offset='1' stop-color='%23F472B6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='%231A1918'/%3E%3Cpath d='M9 23V9h3v14zm5.5 0V9h3v14zm5.5 0V9h3v14z' fill='url(%23g)'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../font.css">
+<link rel="stylesheet" href="../app.css">
+<style>
+  .how-head { padding: 56px 0 8px; display: grid; gap: 14px; max-width: 72ch; }
+  .how-links { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+  .how-links .tap-link { min-width: 44px; justify-content: center; }
+  .how-sec { margin-top: 64px; display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+  .how-sec > h2 { scroll-margin-top: 16px; }
+  .how-sec > p, .how-intro { max-width: 76ch; }
+  .how-fig { margin: 0; padding: 16px; display: grid; gap: 14px; }
+  @media (min-width: 720px) { .how-fig { padding: 24px; } }
+  .flow { display: block; width: 100%; height: auto; }
+  .flow.tall { max-width: 460px; margin: 0 auto; }
+  .flow.wide { display: none; }
+  @media (min-width: 760px) { .flow.wide { display: block; } .flow.tall { display: none; } }
+  .flow .n { fill: rgba(255, 255, 255, 0.03); stroke: rgba(255, 255, 255, 0.18); stroke-width: 1.2; }
+  .flow .n.meta { fill: rgba(168, 85, 247, 0.08); stroke: var(--purple); }
+  .flow .n.dec { fill: rgba(236, 72, 153, 0.1); stroke: var(--pink); stroke-width: 1.8; }
+  .flow .n.opt { stroke-dasharray: 5 4; }
+  .flow .t { fill: var(--fg); font: 650 13px var(--font); }
+  .flow .s { fill: var(--muted); font: 400 11.5px var(--font); }
+  .flow .l { fill: var(--body); font: 500 11px var(--font); }
+  .flow .a { fill: none; stroke: var(--muted); stroke-width: 1.3; }
+  .flow .a.opt { stroke-dasharray: 4 3; }
+  .flow .ah { fill: var(--muted); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .legend i { width: 14px; height: 10px; border-radius: 3px; border: 1.5px solid rgba(255, 255, 255, 0.34); display: inline-block; }
+  .legend i.meta { border-color: var(--purple); background: rgba(168, 85, 247, 0.12); }
+  .legend i.dec { border-color: var(--pink); background: rgba(236, 72, 153, 0.14); }
+  .legend i.opt { border-style: dashed; }
+  .how-fig figcaption { font-size: 15px; color: var(--body); max-width: 80ch; }
+  .models { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .model { padding: 16px 18px; border-radius: var(--r-sm); background: var(--soft); border: 1px solid var(--line); display: grid; gap: 6px; }
+  .model-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+  .model-top h3 { font-size: 17px; }
+  .model .maker { font-size: 13px; color: var(--muted); }
+  .model p { font-size: 15px; max-width: 80ch; }
+  .model.not-meta h3 { color: var(--body); }
+  .how-st { display: inline-block; margin-left: auto; max-width: 100%; white-space: normal; line-height: 1.45; }
+  .how-st::before { display: inline-block; margin-right: 7px; vertical-align: 1px; }
+  @media (max-width: 599px) { .how-st { margin-left: 0; } }
+  .how-st.on { color: var(--praise); }
+  .how-st.off { color: var(--muted); }
+  .rules { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 900px) { .rules { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .rule { padding: 18px 20px; border-radius: var(--r-sm); background: var(--soft); border: 1px solid var(--line); display: grid; gap: 8px; align-content: start; }
+  .rule h3 { font-size: 17px; }
+  .rule ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; }
+  .rule.key { border-color: rgba(236, 72, 153, 0.35); }
+  .stats { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 720px) { .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .stat { padding: 14px 16px; border-radius: var(--r-sm); background: var(--soft); border: 1px solid var(--line); display: grid; gap: 2px; }
+  .stat b { font: 700 28px/1.1 var(--font); color: var(--fg); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+  .stat span { font-size: 13px; color: var(--muted); }
+  .how-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .how-table th, .how-table td { text-align: left; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+  .how-table th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .how-table td.num, .how-table th.num { text-align: right; font-variant-numeric: tabular-nums; padding-right: 0; }
+  .how-table th.num { white-space: nowrap; overflow-wrap: normal; padding-left: 10px; }
+  .vel { max-width: 520px; }
+  .lic { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .lic li { padding: 14px 18px; border-radius: var(--r-sm); background: var(--soft); border: 1px solid var(--line); display: grid; gap: 4px; }
+  .lic .what { font-weight: 650; color: var(--fg); }
+  .lic .terms { color: var(--lilac); font-weight: 600; font-size: 15px; }
+  .lic p { font-size: 14px; color: var(--muted); max-width: 80ch; }
+  .cannot { margin: 0; padding-left: 18px; display: grid; gap: 8px; max-width: 80ch; }
+  .tests-more summary { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; color: var(--body); cursor: pointer; }
+  .tests-more summary:hover { color: var(--fg); }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap topbar">
+    <div class="brandline">
+      <a class="brand" href="../"><span class="eyebrow">Museverse</span><span class="brandname">Teacher</span></a>
+      <span class="badge">Beta</span>
+    </div>
+    <nav class="topnav" aria-label="Main">
+      <a class="navlink nav-cta" href="../#upload"><span class="nav-long">Analyse a video</span><span class="nav-short">Analyse</span></a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="wrap" tabindex="-1">
+  <section class="how-head" aria-labelledby="h-how">
+    <p class="eyebrow">Under the hood</p>
+    <h1 id="h-how">How it <span class="grad">works</span></h1>
+    <p class="lede">The teacher watches a video of you at the piano and listens to it. Our own code measures what happened and decides, with fixed limits, what is worth saying. Meta's models find the keyboard and your hands in the picture, put the decided remarks into words, write a practice plan from them and answer your questions from the measurements.</p>
+    <p class="small how-links"><a class="tap-link" href="#pipeline">The pipeline</a> <a class="tap-link" href="#models">Which model does what</a> <a class="tap-link" href="#rules">The rules</a> <a class="tap-link" href="#judged">What each input judges</a> <a class="tap-link" href="#accuracy">Accuracy</a> <a class="tap-link" href="#null">A professional's own playing</a> <a class="tap-link" href="#tests">Tests</a> <a class="tap-link" href="#licences">Licences</a> <a class="tap-link" href="#limits">What it cannot do</a></p>
+  </section>
+
+  <section class="how-sec" id="pipeline" aria-labelledby="h-pipeline">
+    <h2 id="h-pipeline" class="sec-title">From your video to the answers</h2>
+    <figure class="glass how-fig">
+      <svg class="flow wide" viewBox="0 0 1200 420" role="img" aria-label="Your video goes to SAM 3.1, which finds the keyboard and your hands; the sound goes to a piano transcription model, or your piano's MIDI is lined up with the notes heard. Our code places your hands on the keys and measures each phrase, and fixed limits decide the findings. Only then do Meta's models word the remarks, write the plan and answer questions, through read-only lookups, each checked.">
+        <defs>
+          <marker id="aw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0L10 5L0 10z"/></marker>
+        </defs>
+        <rect class="n" x="12" y="24" width="140" height="72" rx="10"/>
+        <text class="t" x="24" y="50">Your video</text><text class="s" x="24" y="68">phone, first person</text>
+        <rect class="n" x="12" y="174" width="140" height="72" rx="10"/>
+        <text class="t" x="24" y="200">Its sound</text><text class="s" x="24" y="218">the piano as heard</text>
+        <rect class="n opt" x="12" y="324" width="140" height="72" rx="10"/>
+        <text class="t" x="24" y="350">Your piano's MIDI</text><text class="s" x="24" y="368">if you add it</text>
+
+        <rect class="n meta" x="178" y="24" width="180" height="72" rx="10"/>
+        <text class="t" x="190" y="48">SAM 3.1</text><text class="s" x="190" y="66">Meta, 5 frames a second</text><text class="s" x="190" y="83">keyboard, black keys, hands</text>
+        <rect class="n" x="178" y="174" width="180" height="72" rx="10"/>
+        <text class="t" x="190" y="198">Piano transcription</text><text class="s" x="190" y="216">an open model, not Meta</text><text class="s" x="190" y="233">the notes and their onsets</text>
+        <rect class="n opt" x="178" y="324" width="180" height="72" rx="10"/>
+        <text class="t" x="190" y="348">Lined up by ear</text><text class="s" x="190" y="366">our code: exact notes,</text><text class="s" x="190" y="383">only if it is this take</text>
+
+        <rect class="n" x="384" y="24" width="160" height="72" rx="10"/>
+        <text class="t" x="396" y="48">Keyboard pose</text><text class="s" x="396" y="66">our code: every key,</text><text class="s" x="396" y="83">your hands on the keys</text>
+        <rect class="n" x="384" y="249" width="160" height="72" rx="10"/>
+        <text class="t" x="396" y="275">The notes</text><text class="s" x="396" y="293">heard, or your piano's own</text>
+
+        <rect class="n" x="570" y="136" width="136" height="72" rx="10"/>
+        <text class="t" x="582" y="160">Measures</text><text class="s" x="582" y="178">our code, phrase</text><text class="s" x="582" y="195">by phrase</text>
+        <rect class="n dec" x="732" y="136" width="150" height="72" rx="10"/>
+        <text class="t" x="744" y="160">Findings</text><text class="s" x="744" y="178">fixed limits in our</text><text class="s" x="744" y="195">code; no model decides</text>
+        <rect class="n meta" x="732" y="324" width="150" height="72" rx="10"/>
+        <text class="t" x="744" y="348">Your question</text><text class="s" x="744" y="366">typed, or spoken: Muse</text><text class="s" x="744" y="383">Voice Transcribe</text>
+
+        <rect class="n meta" x="952" y="24" width="236" height="72" rx="10"/>
+        <text class="t" x="964" y="48">The teacher's words</text><text class="s" x="964" y="66">Muse Spark, Spark Open or Glimmer</text><text class="s" x="964" y="83">checked, else our fixed lines</text>
+        <rect class="n meta" x="952" y="174" width="236" height="90" rx="10"/>
+        <text class="t" x="964" y="198">Practice plan</text><text class="s" x="964" y="216">Muse Wonder first, where it runs;</text><text class="s" x="964" y="233">else the hosted model that answers;</text><text class="s" x="964" y="250">checked, else our fixed plan</text>
+        <rect class="n meta" x="952" y="324" width="236" height="90" rx="10"/>
+        <text class="t" x="964" y="348">Answers</text><text class="s" x="964" y="366">Muse Spark, Spark Open or Glimmer</text><text class="s" x="964" y="383">hosted: 8 lookups, evidence check;</text><text class="s" x="964" y="400">else our fixed answer</text>
+
+        <path class="a" d="M152 60H176" marker-end="url(#aw)"/>
+        <path class="a" d="M152 210H176" marker-end="url(#aw)"/>
+        <path class="a opt" d="M152 360H176" marker-end="url(#aw)"/>
+        <path class="a" d="M268 246V322" marker-end="url(#aw)"/><text class="l" x="276" y="289">notes heard</text>
+        <path class="a" d="M358 60H382" marker-end="url(#aw)"/>
+        <path class="a" d="M358 210H371V285H382" marker-end="url(#aw)"/>
+        <path class="a opt" d="M358 360H371V285"/>
+        <path class="a" d="M544 60H557V172H568" marker-end="url(#aw)"/>
+        <path class="a" d="M544 285H557V172"/>
+        <path class="a" d="M706 172H730" marker-end="url(#aw)"/>
+        <path class="a" d="M882 172H896V60H950" marker-end="url(#aw)"/><text class="l" x="924" y="53" text-anchor="middle">remarks</text>
+        <path class="a" d="M896 172V210H950" marker-end="url(#aw)"/><text class="l" x="924" y="203" text-anchor="middle">findings</text>
+        <path class="a" d="M896 210V344H950" marker-end="url(#aw)"/><text class="l" x="924" y="337" text-anchor="middle">lookups</text>
+        <path class="a" d="M882 376H950" marker-end="url(#aw)"/>
+      </svg>
+      <svg class="flow tall" viewBox="0 0 360 804" role="img" aria-label="Your video goes to SAM 3.1, which finds the keyboard and your hands; the sound goes to a piano transcription model, or your piano's MIDI is lined up with the notes heard. Our code places your hands on the keys and measures each phrase, and fixed limits decide the findings. Only then do Meta's models word the remarks, write the plan and answer questions, through read-only lookups, each checked.">
+        <defs>
+          <marker id="at" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0L10 5L0 10z"/></marker>
+        </defs>
+        <rect class="n" x="8" y="8" width="104" height="52" rx="9"/>
+        <text class="t" x="18" y="30">Your video</text><text class="s" x="18" y="48">phone</text>
+        <rect class="n" x="128" y="8" width="104" height="52" rx="9"/>
+        <text class="t" x="138" y="30">Its sound</text><text class="s" x="138" y="48">as heard</text>
+        <rect class="n opt" x="248" y="8" width="104" height="52" rx="9"/>
+        <text class="t" x="258" y="30">Piano MIDI</text><text class="s" x="258" y="48">if you add it</text>
+
+        <rect class="n meta" x="8" y="92" width="104" height="52" rx="9"/>
+        <text class="t" x="18" y="114">SAM 3.1</text><text class="s" x="18" y="132">Meta</text>
+        <rect class="n" x="128" y="92" width="104" height="52" rx="9"/>
+        <text class="t" x="138" y="114">Transcription</text><text class="s" x="138" y="132">open model</text>
+        <rect class="n opt" x="248" y="92" width="104" height="52" rx="9"/>
+        <text class="t" x="258" y="114">Lined up</text><text class="s" x="258" y="132">by ear, our code</text>
+
+        <rect class="n" x="8" y="176" width="104" height="52" rx="9"/>
+        <text class="t" x="18" y="198">Keyboard</text><text class="s" x="18" y="216">hands on keys</text>
+        <rect class="n" x="128" y="176" width="224" height="52" rx="9"/>
+        <text class="t" x="138" y="198">The notes</text><text class="s" x="138" y="216">heard, or your piano's own</text>
+
+        <rect class="n" x="8" y="260" width="344" height="52" rx="9"/>
+        <text class="t" x="18" y="282">Measures</text><text class="s" x="18" y="300">our code, phrase by phrase</text>
+        <rect class="n dec" x="8" y="344" width="344" height="52" rx="9"/>
+        <text class="t" x="18" y="366">Findings</text><text class="s" x="18" y="384">fixed limits in our code; no model decides</text>
+
+        <rect class="n meta" x="32" y="428" width="320" height="72" rx="9"/>
+        <text class="t" x="44" y="452">The teacher's words</text><text class="s" x="44" y="470">Muse Spark, Spark Open or Glimmer</text><text class="s" x="44" y="487">checked, else our fixed lines</text>
+        <rect class="n meta" x="32" y="516" width="320" height="90" rx="9"/>
+        <text class="t" x="44" y="540">Practice plan</text><text class="s" x="44" y="558">Muse Wonder first, where it runs;</text><text class="s" x="44" y="575">else the hosted model that answers;</text><text class="s" x="44" y="592">checked, else our fixed plan</text>
+        <rect class="n meta" x="32" y="622" width="320" height="90" rx="9"/>
+        <text class="t" x="44" y="646">Answers</text><text class="s" x="44" y="664">Muse Spark, Spark Open or Glimmer</text><text class="s" x="44" y="681">hosted: 8 lookups, evidence check;</text><text class="s" x="44" y="698">else our fixed answer</text>
+        <rect class="n meta" x="32" y="732" width="320" height="64" rx="9"/>
+        <text class="t" x="44" y="756">Your question</text><text class="s" x="44" y="774">typed, or spoken: Muse Voice Transcribe</text>
+
+        <path class="a" d="M60 60V90" marker-end="url(#at)"/>
+        <path class="a" d="M180 60V90" marker-end="url(#at)"/>
+        <path class="a opt" d="M300 60V90" marker-end="url(#at)"/>
+        <path class="a" d="M232 118H246" marker-end="url(#at)"/>
+        <path class="a" d="M60 144V174" marker-end="url(#at)"/>
+        <path class="a" d="M180 144V174" marker-end="url(#at)"/>
+        <path class="a opt" d="M300 144V174" marker-end="url(#at)"/>
+        <path class="a" d="M60 228V258" marker-end="url(#at)"/>
+        <path class="a" d="M240 228V258" marker-end="url(#at)"/>
+        <path class="a" d="M180 312V342" marker-end="url(#at)"/>
+        <path class="a" d="M18 396V667H30" marker-end="url(#at)"/>
+        <path class="a" d="M18 464H30" marker-end="url(#at)"/>
+        <path class="a" d="M18 561H30" marker-end="url(#at)"/>
+        <path class="a" d="M192 732V714" marker-end="url(#at)"/>
+      </svg>
+      <p class="legend"><span><i class="meta"></i>a Meta model</span><span><i class="dec"></i>where a finding is decided</span><span><i></i>our own code, or another maker's model</span><span><i class="opt"></i>only with your piano's MIDI</span></p>
+      <figcaption>Everything up to the findings is measurement. The findings come from fixed limits in our code. The models after them only work from what was measured: they word the remarks already decided, choose a plan's exercises from those findings, and answer through lookups of the measured take, and each of their replies is checked before you see it.</figcaption>
+    </figure>
+    <p class="how-intro">Unless this server is set otherwise, 4 frames spread over the part analysed go through SAM 3.1 before the rest. When they show no keyboard, or no end of it with your hands at the edge of the picture, the full run would very likely not place your hands either, so the take is judged from its notes at once (its sound, or your piano's MIDI), and the lesson says why and how to film the next one. It can be wrong: filmed at a slant, or with a second keyboard in the picture, an end can be missed in those 4 frames. A longer video is listened to whole (its first hour at most), and only the part with the most piano in it is analysed: <span id="how-window">a minute, unless this server is set otherwise</span>.</p>
+  </section>
+
+  <section class="how-sec" id="models" aria-labelledby="h-models">
+    <h2 id="h-models" class="sec-title">Which model does what, and where it runs here</h2>
+    <p id="models-intro">Each line says whether this server uses that model now, read from its own settings.</p>
+    <noscript><p class="small muted">Which of these this server uses is read from it when the page's script runs.</p></noscript>
+    <ul class="models" role="list">
+      <li class="model" data-model="sam">
+        <div class="model-top"><h3>SAM 3.1</h3><span class="maker">Meta</span><span class="chip how-st" hidden id="st-sam"></span></div>
+        <p>Finds the keyboard, every black key, your hands, thumbs and forearms in the frames, from text prompts, at 5 frames a second. Our own solver turns those outlines into where every key is and where your hands are on them: SAM 3.1 says what is where, never the final geometry. Where it runs gets the frames, never the sound.</p>
+      </li>
+      <li class="model" data-model="spark">
+        <div class="model-top"><h3>Muse Spark</h3><span class="maker">Meta</span><span class="chip how-st" hidden id="st-spark"></span></div>
+        <p>The teacher you talk with: says the lesson in its own voice (every line checked against what was measured: the same notes in the same order, the same bars, hands and fingers, else the lesson's own words stand), puts the remarks the measurements decided into words, answers your questions through read-only lookups of the measured take, and writes the practice plan when Muse Wonder cannot. An upload reaches it only when its player agreed to that at upload and confirmed they are 18 or older; the demos, recorded in the Museverse Quest app, are not sent to it unless Meta has agreed to that in writing. Its words are said aloud by your browser's own voice, or, where this server uses it and the player agreed, by ElevenLabs, a voice service that receives only the words; they are always on screen too.</p>
+      </li>
+      <li class="model" data-model="wonder">
+        <div class="model-top"><h3>Muse Wonder</h3><span class="maker">Meta</span><span class="chip how-st" hidden id="st-wonder"></span></div>
+        <p>The deeper reasoning about your performance. It judges the lesson: of the parts the measurements found (a slip that came back every time, one you put right, a finding), which to teach, in what order and why, with a drill for each and a short verdict on the take. It is given the teacher's know-how (how the take was measured, how sure each kind of evidence is, how a teacher chooses) and the evidence, never the video; it can leave out a slip you put right yourself but never a habit, and cannot add a part or a note. Every line it writes is checked against the evidence, and a choice that fails keeps the lesson's own order. It also writes the practice plan: about ten minutes in three to five blocks, each an exercise from the list of a finding the measurements decided (or, once at most, a check to keep doing something you did well), with one reason in that finding's own words.</p>
+      </li>
+      <li class="model" data-model="open">
+        <div class="model-top"><h3>Muse Spark Open</h3><span class="maker">Meta's open-weights model</span><span class="chip how-st" hidden id="st-open"></span></div>
+        <p>Does Muse Spark's jobs, the plan included, at an open-weights host: an inference provider or our own server. Only for uploads whose player agreed to that host by name; never for a demo.</p>
+      </li>
+      <li class="model" data-model="glimmer">
+        <div class="model-top"><h3>Muse Glimmer</h3><span class="maker">Meta</span><span class="chip how-st" hidden id="st-glimmer"></span></div>
+        <p>Self-hosted on our own server, so nothing goes to Meta: it words the remarks and answers questions, without lookups, every reply checked by the same rules as the spoken lines, and it does not write the plan. Through OpenRouter or at an open-weights host, only for uploads whose player agreed to that host, it does Muse Spark's jobs instead: the lookups, the evidence check and the plan, and at an open-weights host the filming tip too.</p>
+      </li>
+      <li class="model" data-model="stt">
+        <div class="model-top"><h3>Muse Voice Transcribe</h3><span class="maker">Meta</span><span class="chip how-st" hidden id="st-stt"></span></div>
+        <p>Turns a question you speak into words, after you agree that your voice goes to Meta and confirm you are 18 or older. Typing always works.</p>
+      </li>
+      <li class="model" data-model="tip">
+        <div class="model-top"><h3>The filming tip</h3><span class="maker">Muse Spark, Muse Spark Open or Muse Glimmer</span><span class="chip how-st" hidden id="st-tip"></span></div>
+        <p>Only when you tick its own box at upload, and only for a badly framed video: the hosted route's model (Muse Spark, or the open-weights host's Muse Spark Open or Muse Glimmer; never Muse Glimmer through OpenRouter) looks at the 4 frames of the framing check and picks one tip from our list. It never changes the verdict; you read our words for the tip.</p>
+      </li>
+      <li class="model not-meta" data-model="notes">
+        <div class="model-top"><h3>Piano transcription</h3><span class="maker">an open model, not Meta (Kong et al. 2020)</span><span class="chip how-st" hidden id="st-notes"></span></div>
+        <p>Hears the notes in the sound: when each one starts, and roughly how loud it is (the loudness it hears follows the piano's with a correlation of 0.70, below), so loudness is not judged from the sound. When you add the MIDI your digital piano recorded while you filmed, and it lines up with this take, the lesson uses those exact notes instead.</p>
+      </li>
+      <li class="model not-meta" data-model="voice">
+        <div class="model-top"><h3>The teacher's voice</h3><span class="maker">your browser</span></div>
+        <p>Meta has no text-to-speech yet, so your browser reads the teacher's lines aloud with its own voice.</p>
+      </li>
+    </ul>
+  </section>
+
+  <section class="how-sec" id="rules" aria-labelledby="h-rules">
+    <h2 id="h-rules" class="sec-title">What decides, and what a model may do</h2>
+    <div class="rules">
+      <article class="rule key">
+        <h3>Measurements decide every finding</h3>
+        <ul>
+          <li>Each item is measured phrase by phrase and judged against your own other phrases and, where it has one, a fixed limit: a chord spread over more than 50 ms is heard as a roll, and left and right notes written together that land more than 60 ms apart are hands apart. Under 100 ms that is asked as a question (did you mean the bass to come first?), since a bass played first on purpose is often about 50 ms early; only from 100 ms is it worded as a correction.</li>
+          <li>An item is judged only from an input that can measure it (the table below). What a take's input cannot judge is left out, and the lesson says so and why, as in "Loudness is only roughly heard from a video's sound, so it is not judged."</li>
+          <li>A technique remark needs at least 2 flagged phrases. An item counts as judged only when it was measured in 2 phrases where it has a fixed limit, and in 4 where it is compared with your own playing alone; a take with nothing judged is never told that nothing stood out: it is told it was too short, or, when it had 30 seconds and 4 phrases of playing or more, that nothing it can judge came up often enough in it (from the sound, a quiet minute with few chords heard clearly is like that).</li>
+          <li>Wrong and missed notes against a score are said only above what the transcription gets wrong on its own: half of the score's notes in the part you played missed (8 at least), or a fifth of them wrong (4 at least). On your piano's own MIDI, two notes played differently from the score in one bar are enough.</li>
+          <li>Before any of that, the score alignment's own slips are put right or set aside. It matches by pitch alone, so on a key the music repeats it can take each note for the one before; those are paired again in order, each only with a note played where the notes around it place it. A written note and a played note of the same key within half a second of where it was expected are not counted as a missed and an added note either: that may be the alignment's slip or two neighbouring notes swapped, so it is never blamed and never earns praise. A note left out, or played a beat or more away from its place, is still found. From the sound, the notes are listed one by one only when a finding was raised, since the sound alone mishears notes. A key heard different counts from the sound even once when it is clear: as loud as the notes around it, held 0.15 s or more, played alone (in a chord, the voices the transcriber adds and misses pair up as wrong notes), and not held while the written key starts. Two clear keys are a finding on their own, named bar by bar. With no score given, the library piece the notes play is the score. Stops and going back are found too: a stop is a pause of half a second or more, at least twice the time the notes there should take, inside an even run of notes with the playing at its own pace just before and after it, so a gradual slowing or a free rhythm is never one; going back is five or more notes of the melody played again. On a professional's takes neither is found.</li>
+          <li>A bar's timing is judged only from notes on the beat of the notes around them: a bar where a note lands more than 120 ms off that, or holds a note set aside as a possible slip, is not timed at all, since that note may be the alignment's slip as easily as yours.</li>
+          <li>No model decides, adds or removes a finding.</li>
+        </ul>
+      </article>
+      <article class="rule">
+        <h3>What a model may do</h3>
+        <ul>
+          <li>Word the remarks already decided. A line with any number other than the times it was given, a word on our banned list or the wrong hand is replaced by our fixed line.</li>
+          <li>Answer through 8 read-only lookups of the measured take (overview, a finding, the notes in a bar, the notes between two times, a phrase, exercises, a moment, and a re-take's comparison), at most 3 rounds and, unless this server sets another limit, 20 seconds for one answer.</li>
+          <li>Choose a plan's exercises from the decided findings' own lists. Every id, exercise, minute and reason is checked before the plan is used.</li>
+          <li>Pick one of our 10 filming tips, or none. A tip the framing check does not allow for its cause, or none, gives our own fixed tip for that cause.</li>
+        </ul>
+      </article>
+      <article class="rule">
+        <h3>The evidence check</h3>
+        <ul>
+          <li>In an answer written from lookups, every time, bar, note, count and measured number must be one the lookups returned or the take's own context, given to the model, holds.</li>
+          <li>An answer that says something got better or worse since the first take must say what the comparison of the two takes says.</li>
+          <li>Anything else, and the answer is replaced by our fixed answer. The page shows what the model looked up.</li>
+        </ul>
+      </article>
+      <article class="rule">
+        <h3>Fallbacks, never a guess</h3>
+        <ul>
+          <li>No model set up, a reply that fails a check, an error or a timeout: our fixed wording or fixed answer.</li>
+          <li>The plan: Muse Wonder, then Muse Spark (where the model that answers is Muse Spark Open or a hosted Muse Glimmer, that model alone), then our fixed plan from the top findings' own exercises, within 40 seconds for all of it unless this server sets another limit. A demo's plan is always the fixed one.</li>
+          <li>The filming tip: our fixed tip after 15 seconds or on any error.</li>
+          <li>A question about pain always gets our fixed answer (stop, rest, and talk to a piano teacher or a doctor), and so does a question about something the take cannot judge.</li>
+          <li>Never a contributor model, one that trains on what it is sent.</li>
+        </ul>
+      </article>
+      <article class="rule">
+        <h3>Who wrote what</h3>
+        <ul>
+          <li>Every answer says who answered: Muse Spark, Muse Spark Open, Muse Glimmer or the fixed answers, and what it looked up.</li>
+          <li>The plan says who wrote it, and a filming tip says which model chose it when the model's choice was used.</li>
+        </ul>
+      </article>
+      <article class="rule">
+        <h3>What leaves this server</h3>
+        <ul>
+          <li>An upload's measurements reach a hosted model only when its player agreed to that route at upload, and confirmed they are 18 or older.</li>
+          <li>The models that write get your questions, the decided remarks, the take's measured summary and what the lookups return, never your video or its sound. Only the filming tip sends 4 still frames, at most 768 pixels on their long side, and only when its box was ticked.</li>
+          <li>SAM 3.1 gets the frames wherever it runs, as its line above says: this server, our own copy on a rented GPU, or Meta's hosted API.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <section class="how-sec" id="judged" aria-labelledby="h-judged">
+    <h2 id="h-judged" class="sec-title">What each input judges, and what it rests on</h2>
+    <p>A phone video gives its sound and a view of your hands 5 times a second; your piano's MIDI gives the exact notes; the demos, recorded in the Museverse Quest app, give the piano's MIDI and the headset's hand tracking. Each item is judged only from an input that can measure it.</p>
+    <table class="how-table judged">
+      <caption class="sr-only">Each item, the inputs it is judged from, and the evidence</caption>
+      <thead><tr><th scope="col">Item</th><th scope="col">Judged from</th><th scope="col">What it rests on</th></tr></thead>
+      <tbody>
+        <tr><td>Wrong, missed and added notes, against a score</td><td>the sound (only beyond what it mishears on its own), your piano's MIDI, the headset</td><td>The transcription's accuracy below. On the professional's own MIDI against a score made from it, all 1,280 notes are matched once the alignment's slips are put right, and nothing is raised; a note left out and played again a beat later is still found.</td></tr>
+        <tr><td>Chords together</td><td>the sound, your piano's MIDI, the headset unless its note times are stamped coarsely</td><td>A chord's spread is heard to within 13 ms (90th percentile: 12.6 ms, 132 chords) against the 50 ms at which a roll is heard, and no chord played together was heard rolled. From the sound, a chord counts only when each of its notes is heard at least moderately loud: the softest notes are heard only about half the time, so a soft broken chord heard by two of its notes would read as rolled. A chord rolled on purpose has not been tested yet.</td></tr>
+        <tr><td>Hands together</td><td>the sound, with your hands in view or a score; your piano's MIDI; the headset unless its note times are stamped coarsely</td><td>Each note's start is heard to within 8.5 ms (90th percentile) against the 60 ms limit.</td></tr>
+        <tr><td>Evenly spaced runs</td><td>your piano's MIDI, the headset, unless note times are stamped coarsely</td><td>Exact note times. The spread is measured about the run's own line, so a run that speeds up or slows down is not uneven. Not from the sound: on the professional's studio recording, a few misheard notes made his even runs read uneven.</td></tr>
+        <tr><td>Even loudness in runs</td><td>your piano's MIDI, the headset</td><td>The piano's own loudness, measured about the run's own rise or fall, so a crescendo is not uneven. Not from the sound (its loudness follows the piano's with a correlation of 0.70), nor from a MIDI that gives almost every note the same loudness.</td></tr>
+        <tr><td>Wrist height, the hand's roll, the little finger</td><td>the headset, when it tracks the hands 60 times a second or more</td><td>Only against your own playing in that take, and never praised: the tracking's wrist height moves by 1 to 2 cm from take to take and its joint angles are about 10 degrees off.</td></tr>
+        <tr><td>Arriving in time after a jump</td><td>the headset, when it tracks the hands 60 times a second or more</td><td>A hand counts as late when it reaches the new place less than 60 ms before the note; at 60 a second that is under 4 frames. Not from a phone video, where it would be a single frame.</td></tr>
+        <tr><td>How far the hand stretches</td><td>not judged</td><td>On the headset it was raised on the professional's own playing, at a crossing and an arpeggio; a phone video shows the hands' width only roughly.</td></tr>
+        <tr><td>Which finger, how long notes are held, the pedal, tone</td><td>not judged</td><td>Which finger is only shown on the replay. In the sound, a note's end matches the key's release for under 5 % of notes, because the pedal holds it on.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="how-sec" id="accuracy" aria-labelledby="h-accuracy">
+    <h2 id="h-accuracy" class="sec-title">What was measured</h2>
+    <p>How well the transcription hears the notes, on a studio recording of a Debussy piece played by a professional pianist, scored against the MIDI the piano recorded at the same time: a note counts as heard when its pitch is right and it starts within 50 ms of the real one.</p>
+    <div class="stats" role="list">
+      <div class="stat" role="listitem"><b id="acc-f1">0.841</b><span>onset F1 at 50 ms</span></div>
+      <div class="stat" role="listitem"><b id="acc-p">0.894</b><span>precision: notes heard that were played</span></div>
+      <div class="stat" role="listitem"><b id="acc-r">0.794</b><span>recall: notes played that were heard</span></div>
+      <div class="stat" role="listitem"><b id="acc-n">1,280</b><span>notes in the take</span></div>
+      <div class="stat" role="listitem"><b id="acc-vel">0.70</b><span>loudness: correlation of the heard with the piano's</span></div>
+    </div>
+    <table class="how-table vel">
+      <caption class="sr-only">Notes heard, by how hard the key was struck</caption>
+      <thead><tr><th scope="col">How hard the key was struck (velocity, 1 to 127)</th><th scope="col" class="num">Notes</th><th scope="col" class="num">Heard</th></tr></thead>
+      <tbody>
+        <tr><td>below 30</td><td class="num">208</td><td class="num" id="acc-quiet">0.50</td></tr>
+        <tr><td>30 to 49</td><td class="num">472</td><td class="num">0.75</td></tr>
+        <tr><td>50 to 69</td><td class="num">367</td><td class="num">0.91</td></tr>
+        <tr><td>70 and over</td><td class="num">233</td><td class="num">0.97</td></tr>
+      </tbody>
+    </table>
+    <p>This is a studio take, not a phone video: how well it hears a phone's sound has not been measured yet. The onset threshold was picked on the first half of this same take (on the second half alone, F1 is 0.866) and its sound level on the whole take, so these numbers are not from a held-out recording. Quiet notes are the weak spot: half of the notes played below velocity 30 were missed. How loud a note is, it hears only roughly, so loudness is not judged from the sound.</p>
+  </section>
+
+  <section class="how-sec" id="null" aria-labelledby="h-null">
+    <h2 id="h-null" class="sec-title">Tested on a professional's own playing</h2>
+    <p>A professional pianist's own takes go through the same code a learner's do, and must give no remark about technique and no wrong, missed or added note; praise only where it is said inside what is measured. A remark that survives is left out for that input, or its measure is fixed; a limit is never raised just to silence it. The recordings are kept by the team and are not part of this code, so a copy without them skips this test.</p>
+    <table class="how-table">
+      <caption class="sr-only">The professional null tests and their results</caption>
+      <thead><tr><th scope="col">Run</th><th scope="col">Must give</th><th scope="col">On Oct 29, 2026</th></tr></thead>
+      <tbody>
+        <tr><td>His Debussy studio recording, heard as an upload is: the whole take and each minute starting every 15 s, alone and with his MIDI as the score (24 runs)</td><td>no remark (no finding, no passage marked, nothing said to have shown up once, no answer to a first question that says more than was judged), no wrong or missed note</td><td>none</td></tr>
+        <tr><td>His Debussy MIDI as the piano's MIDI of an upload, each minute, alone and with that score</td><td>no remark</td><td>none</td></tr>
+        <tr><td>His Debussy MIDI against a score made from it</td><td>no score finding</td><td>none: 21 notes the alignment had taken for their neighbours put back, all 1,280 notes matched (before: 3 wrong, 18 missed and 18 added notes)</td></tr>
+        <tr><td>His Debussy headset recording and a second player's, built as the demos are</td><td>no remark; praise only inside the measure, and worded as what was measured</td><td>none on either; Debussy praised for chords and hands together and the jumps, each said as what was measured ("most of your left-hand chords landed close enough together to sound as one"), the second player for nothing</td></tr>
+        <tr><td>The same two through the live teacher, as the headset would run it</td><td>nothing said</td><td>nothing said</td></tr>
+      </tbody>
+    </table>
+    <p>Before these tests, the same takes got a tip about the left hand held stretched (Debussy), two about the little fingers lifting (the second player), one about uneven runs from the studio recording, and three score findings on his own MIDI; a first fix still said chord notes "showed up" apart once in the studio recording (two notes of a soft broken chord, all the transcription heard of it) and praised him as "nicely together".</p>
+  </section>
+
+  <section class="how-sec" id="tests" aria-labelledby="h-tests">
+    <h2 id="h-tests" class="sec-title">The tests</h2>
+    <p>The test suites run without any model key, in one command: against stand-ins on our machine for Meta's API, OpenRouter, the open-weights hosts and Replicate, on the real server with sample lessons made for the test and judge codes, on recorded takes where the answers are known, and on this site in a real browser at desktop and phone widths. Some suites also check against recordings made in the Museverse Quest app and other material of ours that is not part of this code: a copy without them skips those parts, and its counts are smaller.</p>
+    <div class="stats" role="list" id="tests-stats" hidden>
+      <div class="stat" role="listitem"><b id="t-suites"></b><span>test suites</span></div>
+      <div class="stat" role="listitem"><b id="t-checks"></b><span>checks passed</span></div>
+      <div class="stat" role="listitem"><b id="t-failed"></b><span>suites failed</span></div>
+      <div class="stat" role="listitem"><b id="t-date"></b><span>the last full run</span></div>
+    </div>
+    <p id="tests-sum" hidden></p>
+    <noscript><p class="small muted">The last run's results are in <a href="tests.json">tests.json</a>.</p></noscript>
+    <details class="tests-more" id="tests-more" hidden>
+      <summary>Every suite and its count</summary>
+      <table class="how-table">
+        <thead><tr><th scope="col">Suite</th><th scope="col">Result</th><th scope="col" class="num">Checks passed</th></tr></thead>
+        <tbody id="tests-rows"></tbody>
+      </table>
+    </details>
+  </section>
+
+  <section class="how-sec" id="licences" aria-labelledby="h-licences">
+    <h2 id="h-licences" class="sec-title">Licences</h2>
+    <ul class="lic" role="list">
+      <li><span class="what">SAM 3.1 (Meta)</span><span class="terms" id="lic-sam">SAM License, last updated November 19, 2025</span>
+        <p>Its weights run wherever SAM 3.1 runs (see above); they are not part of this site.</p></li>
+      <li><span class="what">Piano transcription checkpoint</span><span class="terms" id="lic-notes">CC BY 4.0 (Zenodo record 4034264)</span>
+        <p>"High-resolution piano transcription with pedals by regressing onset and offset times", Qiuqiang Kong and others, 2020, run through their inference package (MIT, per its package metadata). It was trained on the MAESTRO v2.0.0 recordings (CC BY-NC-SA 4.0); whether that licence reaches the weights is not settled.</p></li>
+      <li><span class="what">three.js 0.160.0</span><span class="terms" id="lic-three">MIT, Copyright 2010-2023 Three.js Authors</span>
+        <p>Draws the 3D hands replay. This site serves its own copy, unchanged, with its licence beside it; the full licence text is on the <a href="../notices.html">Notices</a> page.</p></li>
+      <li><span class="what">The hand models</span><span class="terms" id="lic-hands">MIT, Copyright (c) 2019 Amazon</span>
+        <p>The WebXR generic hand models from the WebXR Input Profiles assets 1.0.20. The full licence text is on the <a href="../notices.html">Notices</a> page.</p></li>
+      <li><span class="what">The smoke textures and the key glow</span><span class="terms" id="lic-own">Museverse's own app assets, licence not confirmed</span>
+        <p>The two smoke textures of the 3D replay and the glow on a sounding key come from the Museverse Quest app's assets. Who made them, and on what terms, is not recorded, so they are used in Museverse's own apps only.</p></li>
+      <li><span class="what">Wix Madefor Display, the font</span><span class="terms" id="lic-font">SIL Open Font License 1.1</span>
+        <p>By The Wix Madefor Project Authors. This site serves its own copy of the font's published web files, unchanged, with its licence beside them; the full licence text is on the <a href="../notices.html">Notices</a> page.</p></li>
+    </ul>
+  </section>
+
+  <section class="how-sec" id="limits" aria-labelledby="h-limits">
+    <h2 id="h-limits" class="sec-title">What it cannot do</h2>
+    <ul class="cannot">
+      <li><strong>Piano only.</strong> The transcription model and the keyboard model are both made for a piano keyboard.</li>
+      <li><strong>Quiet notes.</strong> Half of the notes played below velocity 30 are missed, so a soft passage is judged on fewer notes than were played.</li>
+      <li><strong>Framing.</strong> To place your hands it needs the keyboard in the picture and either one end of it, or 20 notes played with both hands fully in view to tell the octave from; otherwise it judges from the notes alone (the sound, or your piano's MIDI) and says so.</li>
+      <li><strong>Not judged on a phone video.</strong> Which finger played each note, wrist angles and finger curvature (from one camera the error is larger than the effect), how far a hand stretches and how it arrives after a jump (the picture is read 5 times a second, and shows a hand's width only roughly), tension or pain, and pedalling. The demos, recorded in the Museverse Quest app, are judged from the headset's hand tracking instead, which adds, when it tracks the hands 60 times a second or more, a wrist held low or high, a hand rolled towards the little finger and a little finger lifted (each only against the player's own playing in that take, and never praised), and the arrival after a jump.</li>
+      <li><strong>Not judged from the sound.</strong> Loudness, which it hears only roughly; how evenly a fast run is spaced, since a misheard or missed note changes the spacing; how long notes are held, and the pedal.</li>
+      <li><strong>Tried live only once.</strong> One question was answered live, by Muse Spark through OpenRouter, on Oct 26, 2026. Every other model route on this page (Meta's Model API, SAM 3.1 hosted at Meta or on a rented GPU, the open-weights hosts, a self-hosted Muse Glimmer and Muse Voice Transcribe) has run only against stand-ins on our machine so far, <span id="live-gpu">nothing has run on a GPU yet</span>, and <span id="live-phone">no phone video filmed by our own players has been analysed yet</span><span id="live-when">, as of Oct 28, 2026</span>.</li>
+      <li><strong>No learner study.</strong> Its limits have not been checked against a teacher's judgement yet. The professional null tests above show it stays quiet on a professional's own playing, not that it finds a learner's faults: nobody has measured whether a teacher agrees with its findings, or whether players who follow them improve.</li>
+    </ul>
+  </section>
+</main>
+<footer class="foot">
+  <div class="wrap foot-in">
+    <div class="foot-main">
+      <p class="foot-brand"><span class="eyebrow">Museverse</span><span class="brandname">Teacher</span></p>
+      <p class="small"><a class="tap-link" href="../">Back to the teacher</a> <span class="muted" aria-hidden="true">·</span> <a class="tap-link" href="../new/" id="how-new">What's new</a> <span class="muted" aria-hidden="true">·</span> <a class="tap-link" href="../notices.html">Notices</a></p>
+      <p class="small muted">Questions: <span class="contact">hello@museverse.xyz</span></p>
+    </div>
+  </div>
+</footer>
+<script>
+
+
+(async () => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const day = (d) => { const [y, m, n] = String(d).split('-').map(Number); return MONTHS[m - 1] ? `${MONTHS[m - 1]} ${n}, ${y}` : String(d); };
+  const OFF = 'Off on this server';
+  const set = (id, on, text) => { const e = $(id); if (!e) return; e.textContent = text || (on ? 'On here' : OFF); e.classList.toggle('on', !!on); e.classList.toggle('off', !on); e.hidden = false; };
+
+  
+  
+  function routes(h) {
+    const chat = h.chat || {}, route = chat.route, or = h.openrouter || {}, ow = h.openWeights || {}, meta = h.meta || {};
+    const WHERE = { meta: "at Meta's Model API", openrouter: 'through OpenRouter, which passes it only to Meta' };
+    const orGlimmer = route === 'openrouter' && /glimmer/i.test(or.model || '');
+    const sam = String(h.samBackend || '');
+    set('st-sam', true, sam === 'meta' ? "On: hosted at Meta's Model API" : sam === 'replicate' ? 'On: our own copy of SAM 3.1 on a rented GPU'
+      : /cuda/.test(sam) ? "On: this server's GPU" : /cpu/.test(sam) ? "On: this server's processor" : 'On: this server');
+    const spark = route === 'meta' || (route === 'openrouter' && !orGlimmer);
+    set('st-spark', spark, spark ? `On: ${WHERE[route]}` : '');
+    const plan = h.plan || {}, by = Array.isArray(plan.by) ? plan.by : [];
+    const wonder = by.some((x) => /Muse Wonder/.test(x));
+    set('st-wonder', wonder, wonder ? `On: ${WHERE[route] || 'here'}` : plan.fixed ? `${OFF}: the fixed plan only` : '');
+    
+    const owGlimmer = !!ow.muse && /glimmer/i.test(ow.family || ow.model || '');
+    const owAt = `open weights, served by ${ow.servedBy || ow.hostName || 'its host'}`;
+    set('st-open', !!ow.muse && !owGlimmer, ow.muse && !owGlimmer ? `On: ${owAt}` : '');
+    const gl = [chat.glimmer && 'self-hosted on our own server', orGlimmer && 'through OpenRouter, served by a host that is not Meta', owGlimmer && owAt].filter(Boolean);
+    set('st-glimmer', gl.length > 0, gl.length ? `On: ${gl.join('; and ')}` : '');
+    set('st-stt', !!meta.stt, meta.stt ? `On: Meta's Model API${(h.voice || {}).realtime ? ', streamed as you speak' : ''}` : `${OFF}: type your questions`);
+    const tip = h.framingTip || {};
+    set('st-tip', !!tip.available, tip.available ? `On: ${tip.who || 'a hosted model'}, only when you tick its box` : '');
+    set('st-notes', !!h.transcriber, h.transcriber ? 'On: this server' : '');
+    if (Number.isFinite(h.windowS) && h.windowS > 0) $('how-window').textContent = h.windowS === 60 ? 'a minute here' : `${Math.round(h.windowS)} seconds here`;
+    
+    
+    const gpu = /cuda/.test(sam), phone = Number.isInteger(h.samples) && h.samples > 0;
+    if (gpu) $('live-gpu').textContent = 'this server runs SAM 3.1 on its own GPU';
+    if (phone) $('live-phone').textContent = 'the sample lessons on the home page are phone videos our team filmed, already analysed';
+    if (gpu && phone) $('live-when').textContent = '';
+    
+    
+    const REF = { team: "This server compares only the team's own test takes with a reference recording.",
+      public: 'This server compares takes of its library pieces with a reference recording whose pianist agreed to it.' };
+    if (REF[h.reference]) showReference(REF[h.reference], h.referencesLoaded > 0);
+  }
+  
+  
+  async function showReference(line, loaded) {
+    try {
+      const r = await fetch('../api/reference/how', { cache: 'no-store' });
+      if (!r.ok) return;
+      const box = document.createElement('div');
+      box.innerHTML = await r.text();
+      const sec = box.querySelector('section#reference');
+      if (!sec) return;
+      document.getElementById('tests').before(sec);
+      if (loaded) $('how-ref').textContent = line;
+      if (location.hash === '#reference') sec.scrollIntoView();
+    } catch (e) { console.warn('reference:', e && e.message); }
+  }
+  try {
+    const r = await fetch('../api/health', { cache: 'no-store' });
+    if (!r.ok) throw new Error(String(r.status));
+    routes(await r.json());
+  } catch (e) {
+    for (const id of ['st-sam', 'st-spark', 'st-wonder', 'st-open', 'st-glimmer', 'st-stt', 'st-tip', 'st-notes']) { $(id).textContent = 'Not known'; $(id).classList.add('off'); $(id).hidden = false; }
+    $('models-intro').textContent = "This server's settings could not be read just now, so whether it uses each model is not shown. Reload the page to try again.";
+  }
+
+  
+  const NAMES = { e2e: 'the end-to-end run' };
+  try {
+    const r = await fetch('tests.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error(String(r.status));
+    const t = await r.json(), suites = Array.isArray(t.suites) ? t.suites : [];
+    if (!suites.length) throw new Error('empty');
+    const failed = suites.filter((s) => s.result === 'failed'), skipped = suites.filter((s) => s.result === 'skipped');
+    const counted = suites.filter((s) => Number.isInteger(s.checks)), nocount = suites.filter((s) => s.result === 'passed' && !Number.isInteger(s.checks));
+    const partly = suites.filter((s) => s.result !== 'skipped' && Number.isInteger(s.partsSkipped) && s.partsSkipped > 0);
+    const parts = (s) => (partly.includes(s) ? `, ${s.partsSkipped} part${s.partsSkipped > 1 ? 's' : ''} skipped` : '');
+    const checks = counted.reduce((a, s) => a + s.checks, 0);
+    const name = (s) => NAMES[s.name] || s.name;
+    const list = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs[0] || '');
+    const [hash, dirty] = String(t.commit || '').split('-');
+    $('t-suites').textContent = String(suites.length);
+    $('t-checks').textContent = checks.toLocaleString('en-US');
+    $('t-failed').textContent = String(failed.length);
+    $('t-date').textContent = day(t.date);
+    $('tests-stats').hidden = false;
+    $('tests-sum').textContent = `The last full run, on ${day(t.date)}${hash ? ` on change ${hash}${dirty ? ' with changes not yet committed' : ''}` : ''}: `
+      + (failed.length ? `${suites.length - failed.length - skipped.length} of ${suites.length} suites passed, and ${list(failed.map(name))} failed`
+        : `all ${suites.length - skipped.length} suites${skipped.length ? ' that ran' : ''} passed`)
+      + (skipped.length ? `; ${list(skipped.map(name))} skipped` : '')
+      + (partly.length ? `; ${list(partly.map(name))} skipped part of ${partly.length > 1 ? 'their' : 'its'} checks, for want of something on the machine that ran ${partly.length > 1 ? 'them' : 'it'}` : '')
+      + `. The ${checks.toLocaleString('en-US')} checks passed are what the ${counted.length} suites that count their checks reported`
+      + (nocount.length ? `; ${list(nocount.map(name))} ${nocount.length > 1 ? 'print' : 'prints'} no count of ${nocount.length > 1 ? 'their' : 'its'} own, so ${nocount.length > 1 ? 'they add' : 'it adds'} nothing to that number` : '')
+      + '.';
+    $('tests-rows').innerHTML = suites.map((s) => `<tr><td>${esc(name(s))}</td><td>${esc(s.result + parts(s))}</td><td class="num">${Number.isInteger(s.checks) ? esc(s.checks.toLocaleString('en-US')) : 'no count'}</td></tr>`).join('');
+    $('tests-more').hidden = false;
+  } catch (e) {
+    $('tests-sum').textContent = 'No test run is recorded on this server.';
+  }
+  $('tests-sum').hidden = false;
+})();
+</script>
+</body>
+</html>
